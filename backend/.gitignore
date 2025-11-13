@@ -22,8 +22,6 @@ build/
 *.sqlite
 
 # Model files
-*.pkl
-*.h5
 *.pt
 *.pth
 *.onnx
