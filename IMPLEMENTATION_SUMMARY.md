@@ -205,11 +205,11 @@ frontend/
 ### **Backend (.env)**
 ```env
 # MongoDB Atlas
-MONGODB_URL=mongodb+srv://bhraviteja:4HfbdlfxTmwhgT7u@infosysspringboard-bfsi.xldmlhy.mongodb.net/
+MONGODB_URL=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/
 DATABASE_NAME=fraud_detection_db
 
 # Gemini AI
-GEMINI_API_KEY=AIzaSyAVijxTSU6Ztl3oWdLw8y2HxAbBT6fxyfM
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # API
 API_HOST=0.0.0.0

@@ -199,7 +199,7 @@ backend/
 ### Environment Variables (.env)
 
 ```bash
-MONGODB_URL=mongodb+srv://bhraviteja:4HfbdlfxTmwhgT7u@infosysspringboard-bfsi.xldmlhy.mongodb.net/
+MONGODB_URL=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/
 DATABASE_NAME=fraud_detection_db
 MODEL_VERSION=1.0.0
 API_HOST=0.0.0.0
