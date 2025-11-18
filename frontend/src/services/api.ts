@@ -91,6 +91,7 @@ export interface PredictionRequest {
   channel: string;
   kyc_verified: string;
   hour: number;
+  timestamp?: string;
 }
 
 export interface PredictionResponse {

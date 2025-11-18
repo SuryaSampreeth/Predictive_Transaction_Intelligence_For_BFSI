@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppShell from "@/components/layout/AppShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,12 +77,17 @@ const SettingsPage = () => {
   };
 
   // Sync local state when data loads
-  if (thresholdsQuery.data && thresholds.high_risk_threshold === 0.7) {
-    setThresholds(thresholdsQuery.data);
-  }
-  if (notificationQuery.data && notifications.email_enabled) {
-    setNotifications(notificationQuery.data);
-  }
+  useEffect(() => {
+    if (thresholdsQuery.data) {
+      setThresholds(thresholdsQuery.data);
+    }
+  }, [thresholdsQuery.data]);
+
+  useEffect(() => {
+    if (notificationQuery.data) {
+      setNotifications(notificationQuery.data);
+    }
+  }, [notificationQuery.data]);
 
   return (
     <AppShell

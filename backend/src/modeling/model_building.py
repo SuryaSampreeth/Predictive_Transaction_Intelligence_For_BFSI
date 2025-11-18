@@ -17,7 +17,7 @@ from sklearn.metrics import classification_report, roc_auc_score, confusion_matr
 import joblib
 
 # 1. Load Cleaned Data
-DATA_PATH = "transactions_clean.csv"
+DATA_PATH = "backend/data/processed/transactions_clean.csv"
 df = pd.read_csv(DATA_PATH)
 print("Dataset Loaded")
 print(f"Rows: {len(df)}, Columns: {df.shape[1]}")

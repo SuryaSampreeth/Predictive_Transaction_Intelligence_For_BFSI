@@ -34,6 +34,20 @@ const CHANNELS = ["Mobile", "Web", "ATM", "POS"];
 const LOCATIONS = ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad"];
 const MERCHANT_NAMES = ["Raj Kumar", "Priya Sharma", "Amit Patel", "Sneha Reddy", "Vikram Singh", "Anjali Gupta", "Rahul Verma", "Neha Kapoor"];
 
+const formatTimestamp = (value?: string) => {
+  if (!value) return "--";
+  try {
+    return new Date(value).toLocaleString("en-IN", {
+      hour12: true,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch (error) {
+    return value;
+  }
+};
+
 // Track fraud count to ensure 9-15 frauds per 100 transactions
 let fraudCount = 0;
 let totalCount = 0;
@@ -50,6 +64,8 @@ const buildRandomTransaction = (index: number, batchSize: number, runTimestamp: 
   // Unique transaction ID with timestamp to avoid duplicates
   const uniqueId = `SIM${runTimestamp}_${String(index + 1).padStart(4, "0")}`;
   
+  const deviceTimestamp = new Date().toISOString();
+
   // Create intentionally fraudulent transaction with higher probability
   if (shouldBeFraud && (Math.random() > 0.2 || fraudCount < targetFraudCount * progressRatio)) {
     fraudCount++;
@@ -60,6 +76,7 @@ const buildRandomTransaction = (index: number, batchSize: number, runTimestamp: 
       channel: Math.random() > 0.6 ? "ATM" : "Web",
       kyc_verified: "No", // Not verified
       hour: [0, 1, 2, 3, 22, 23][Math.floor(Math.random() * 6)], // Late night/early morning
+      timestamp: deviceTimestamp,
     };
   }
   
@@ -71,6 +88,7 @@ const buildRandomTransaction = (index: number, batchSize: number, runTimestamp: 
     channel: CHANNELS[Math.floor(Math.random() * CHANNELS.length)],
     kyc_verified: "Yes",
     hour: Math.floor(Math.random() * 10) + 9, // Business hours 9-18
+    timestamp: deviceTimestamp,
   };
 };
 
@@ -81,8 +99,10 @@ const SimulationLab = () => {
   const [progress, setProgress] = useState(0);
   const [running, setRunning] = useState(false);
 
+  const completedRecords = useMemo(() => records.filter((record) => record.status !== "pending"), [records]);
+
   const summary = useMemo(() => {
-    const completed = records.filter((record) => record.status !== "pending");
+    const completed = completedRecords;
     const frauds = completed.filter((r) => r.prediction?.prediction === "Fraud");
     const avgProbability = completed.reduce((acc, record) => {
       if (record.prediction) {
@@ -104,7 +124,7 @@ const SimulationLab = () => {
       avgProbability: completed.length ? (avgProbability / completed.length) * 100 : 0,
       avgLatency: completed.length ? avgLatency / completed.length : 0,
     };
-  }, [records]);
+  }, [completedRecords]);
 
   const runSimulation = async () => {
     if (running) return;
@@ -170,20 +190,17 @@ const SimulationLab = () => {
   };
 
   const riskSeries = useMemo(() => {
-    return records
+    return completedRecords
       .filter((record) => record.prediction)
       .map((record, idx) => ({
         index: idx + 1,
         probability: Math.round(record.prediction!.fraud_probability * 100),
       }));
-  }, [records]);
+  }, [completedRecords]);
 
   const recentLog = useMemo(() => {
-    return records
-      .filter((record) => record.status !== "pending")
-      .slice(-12)
-      .reverse();
-  }, [records]);
+    return completedRecords.slice(-12).reverse();
+  }, [completedRecords]);
 
   return (
     <AppShell
@@ -317,17 +334,19 @@ const SimulationLab = () => {
                   <th>Transaction ID</th>
                   <th>Amount</th>
                   <th>Channel</th>
+                  <th>Timestamp</th>
                   <th>Prediction</th>
                   <th>Probability</th>
                 </tr>
               </thead>
               <tbody>
-                {records.map((record, idx) => (
+                {completedRecords.map((record, idx) => (
                   <tr key={record.id} className="border-t">
                     <td className="py-2">{idx + 1}</td>
                     <td className="font-mono">{record.payload.customer_id}</td>
                     <td>₹{record.payload.transaction_amount.toLocaleString()}</td>
                     <td>{record.payload.channel}</td>
+                    <td>{formatTimestamp(record.prediction?.timestamp || record.payload.timestamp)}</td>
                     <td>
                       {record.prediction ? (
                         <Badge variant={record.prediction.prediction === "Fraud" ? "destructive" : "default"}>
