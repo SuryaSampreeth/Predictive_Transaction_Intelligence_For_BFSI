@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BFSI Fraud Prediction Client</title>
+    <!-- Load Tailwind CSS for simple styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styling for a financial application feel */
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            border-radius: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 font-sans">
+    <div class="w-full max-w-md">
+        
+        <!-- Main Card for Transaction Input -->
+        <div id="input-card" class="bg-white card p-8 space-y-6">
+            <h1 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Real-Time Prediction Score</h1>
+            <p class="text-sm text-gray-500">
+                Client sends features to Flask API for prediction and displays the decision instantly.
+            </p>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="txnId" class="block text-sm font-medium text-gray-700">Transaction ID</label>
+                        <input type="text" id="txnId" value="TXN_123456" placeholder="txn_..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="customerId" class="block text-sm font-medium text-gray-700">Customer ID</label>
+                        <input type="text" id="customerId" value="CUST_A9C3" placeholder="cust_..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
+                    <input type="number" id="amount" value="850.00" placeholder="0.00" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="accountAge" class="block text-sm font-medium text-gray-700">Account Age (Days)</label>
+                        <input type="number" id="accountAge" value="1050" placeholder="Days" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="channel" class="block text-sm font-medium text-gray-700">Transaction Channel</label>
+                        <select id="channel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="Web">Web (Online)</option>
+                            <option value="Mobile">Mobile App</option>
+                            <option value="Pos">Point of Sale (POS)</option>
+                            <option value="Atm">ATM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="hidden">
+                    <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
+                    <input type="text" id="currency" value="USD" disabled class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-gray-100">
+                </div>
+            </div>
+
+            <button onclick="sendPredictionRequest()" id="predictButton" 
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Predict Fraud Risk
+            </button>
+        </div>
+
+        <!-- Result Display Card -->
+        <div id="result-card" class="bg-white card p-6 mt-6 hidden border-l-4 border-indigo-500">
+            <h2 class="text-xl font-semibold mb-3 text-gray-800">Prediction Result</h2>
+            <div class="space-y-2 text-sm">
+                <p><strong>Decision:</strong> <span id="decisionOutput" class="font-bold text-lg"></span></p>
+                <p><strong>Risk Score (0-1):</strong> <span id="scoreOutput" class="font-mono bg-gray-100 p-1 rounded"></span></p>
+                <p class="text-gray-500">Latency: <span id="latencyOutput"></span> ms</p>
+            </div>
+        </div>
+
+        <!-- Error/Loading Messages -->
+        <div id="message-area" class="mt-4 p-4 rounded-md hidden"></div>
+    </div>
+
+    <script type="module">
+        // --- CONFIGURATION ---
+        // Using the absolute URL works best for development in most environments
+        const API_ENDPOINT = 'http://127.0.0.1:5000/predict'; 
+        const API_KEY = 'super_secret_bfsi_key_123'; 
+        
+        // --- HELPER FUNCTIONS ---
+        function showMessage(msg, type = 'info') {
+            const area = document.getElementById('message-area');
+            area.innerHTML = msg;
+            area.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-yellow-100', 'text-yellow-700', 'bg-indigo-100', 'text-indigo-700', 'bg-green-100', 'text-green-700');
+            
+            if (type === 'error') {
+                area.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'loading') {
+                area.classList.add('bg-yellow-100', 'text-yellow-700');
+            } else if (type === 'success') {
+                area.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                area.classList.add('bg-indigo-100', 'text-indigo-700');
+            }
+            area.classList.remove('hidden');
+        }
+
+        // --- MAIN FUNCTION ---
+        window.sendPredictionRequest = async function() {
+            const button = document.getElementById('predictButton');
+            const resultCard = document.getElementById('result-card');
+            
+            // 1. Collect Data (Mapped to CSV features)
+            const txnId = document.getElementById('txnId').value;
+            const customerId = document.getElementById('customerId').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const accountAge = parseInt(document.getElementById('accountAge').value, 10);
+            const channel = document.getElementById('channel').value;
+            const currency = document.getElementById('currency').value;
+
+            if (!txnId || !customerId || isNaN(amount) || amount <= 0 || isNaN(accountAge) || accountAge <= 0) {
+                showMessage('Please enter valid inputs.', 'error');
+                return;
+            }
+
+            const payload = {
+                transaction_id: txnId,
+                customer_id: customerId, 
+                amount: amount,          
+                account_age_days: accountAge, 
+                channel: channel,        
+                currency: currency,
+            };
+
+            // 2. Prepare UI for request
+            button.disabled = true;
+            button.textContent = 'Processing...';
+            resultCard.classList.add('hidden');
+            document.getElementById('decisionOutput').className = 'font-bold text-lg';
+            
+            showMessage('Sending features to Flask Prediction API...', 'loading');
+
+            try {
+                // 3. Send Request to Flask API
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY 
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                // 4. Handle Response
+                if (response.ok && data.status === 'success') {
+                    // Update UI
+                    document.getElementById('decisionOutput').textContent = data.decision;
+                    document.getElementById('scoreOutput').textContent = data.risk_score;
+                    document.getElementById('latencyOutput').textContent = data.metadata.latency_ms;
+                    
+                    let decisionColorClass = 'text-green-600 border-green-500';
+                    let borderColorClass = 'border-green-500';
+
+                    if (data.decision === 'DENY') {
+                        decisionColorClass = 'text-red-600';
+                        borderColorClass = 'border-red-500';
+                    } else if (data.decision === 'FLAG_FOR_REVIEW') {
+                        decisionColorClass = 'text-yellow-600';
+                        borderColorClass = 'border-yellow-500';
+                    }
+                    
+                    document.getElementById('decisionOutput').classList.add(decisionColorClass);
+                    resultCard.className = `bg-white card p-6 mt-6 border-l-4 ${borderColorClass}`;
+                    resultCard.classList.remove('hidden');
+
+                    showMessage(`Prediction successful. Decision: ${data.decision}`, 'success');
+
+                } else {
+                    // If the response is NOT OK, but we received JSON (like the 401 error)
+                    showMessage(`API Error (${response.status}): ${data.message || 'An unknown server error occurred.'}`, 'error');
+                }
+
+            } catch (error) {
+                // Network or CORS error (This is the error you are seeing)
+                showMessage(`Connection Error: Could not reach the API endpoint at ${API_ENDPOINT}. Please ensure your Flask app is running on port 5000 and the client is served via HTTP (e.g., Python simple server on port 8000).`, 'error');
+                console.error('Fetch error:', error);
+            } finally {
+                // Reset button
+                button.disabled = false;
+                button.textContent = 'Predict Fraud Risk';
+            }
+        }
+    </script>
+</body>
+</html>
