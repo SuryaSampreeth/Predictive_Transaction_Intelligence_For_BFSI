@@ -118,7 +118,7 @@ const AnalyticsReports = () => {
         />
         <MetricCard
           title="Avg Fraud Amount"
-          value={fraudStats ? `₹${fraudStats.avg_fraud_amount.toLocaleString()}` : "-"}
+          value={fraudStats?.avg_fraud_amount ? `₹${fraudStats.avg_fraud_amount.toLocaleString()}` : "₹0"}
           icon={FileBarChart2}
           trend="down"
           trendValue="vs last week"

@@ -40,8 +40,11 @@ const PerformanceDashboard = () => {
 
       // Load prediction stats
       const results = await fetchAllResults(1000, false);
-      const fraudCount = (results.results || []).filter((r: any) => r.prediction === "Fraud").length;
-      const avgRisk = (results.results || []).reduce((sum: number, r: any) => sum + r.risk_score, 0) / (results.results?.length || 1);
+      const resultsList = results.results || [];
+      const fraudCount = resultsList.filter((r: any) => r.prediction === "Fraud").length;
+      const avgRisk = resultsList.length > 0 
+        ? resultsList.reduce((sum: number, r: any) => sum + (r.risk_score ?? r.fraud_probability ?? 0), 0) / resultsList.length
+        : 0;
 
       setStats({
         total: results.total || 0,

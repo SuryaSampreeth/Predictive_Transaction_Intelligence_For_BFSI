@@ -11,15 +11,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface PredictionResult {
   transaction_id: string;
-  customer_id: string;
+  customer_id?: string;
   prediction: string;
-  risk_score: number;
-  confidence: number;
+  risk_score?: number;
+  fraud_probability?: number;
+  confidence?: number;
   reason?: string;
   rule_flags?: string[];
-  amount: number;
-  channel: string;
-  processed_at: string;
+  amount?: number;
+  channel?: string;
+  processed_at?: string;
+  predicted_at?: string;
+  risk_level?: string;
 }
 
 const ResultsHistory = () => {
@@ -59,17 +62,21 @@ const ResultsHistory = () => {
   const handleExport = () => {
     const csvContent = [
       ["Transaction ID", "Customer ID", "Prediction", "Risk Score", "Confidence", "Amount", "Channel", "Reason", "Processed At"],
-      ...filteredResults.map(r => [
-        r.transaction_id,
-        r.customer_id,
-        r.prediction,
-        (r.risk_score * 100).toFixed(2) + "%",
-        r.confidence.toFixed(2) + "%",
-        r.amount,
-        r.channel,
-        r.reason || "",
-        new Date(r.processed_at).toLocaleString()
-      ])
+      ...filteredResults.map(r => {
+        const riskScore = r.risk_score ?? r.fraud_probability ?? 0;
+        const timestamp = r.processed_at || r.predicted_at;
+        return [
+          r.transaction_id || "",
+          r.customer_id || r.transaction_id || "",
+          r.prediction || "",
+          (riskScore * 100).toFixed(2) + "%",
+          (r.confidence ?? riskScore * 100).toFixed(2) + "%",
+          r.amount ?? "N/A",
+          r.channel || "N/A",
+          r.reason || "",
+          timestamp ? new Date(timestamp).toLocaleString() : "N/A"
+        ];
+      })
     ].map(row => row.join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -210,48 +217,60 @@ const ResultsHistory = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredResults.map((result, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell className="font-mono text-xs">
-                        {result.transaction_id}
-                      </TableCell>
-                      <TableCell>{result.customer_id}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={result.prediction === "Fraud" ? "destructive" : "default"}
-                          className="flex items-center gap-1 w-fit"
-                        >
-                          {result.prediction === "Fraud" ? (
-                            <AlertTriangle className="h-3 w-3" />
-                          ) : (
-                            <CheckCircle className="h-3 w-3" />
-                          )}
-                          {result.prediction}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className={result.risk_score > 0.5 ? "text-red-600 font-semibold" : ""}>
-                          {(result.risk_score * 100).toFixed(1)}%
-                        </span>
-                      </TableCell>
-                      <TableCell>₹{result.amount.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{result.channel}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {result.rule_flags && result.rule_flags.length > 0 ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {result.rule_flags.length} rules
+                  {filteredResults.map((result, idx) => {
+                    // Handle both risk_score and fraud_probability from API
+                    const riskScore = result.risk_score ?? result.fraud_probability ?? 0;
+                    const timestamp = result.processed_at || result.predicted_at;
+                    
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-mono text-xs">
+                          {result.transaction_id || "N/A"}
+                        </TableCell>
+                        <TableCell>{result.customer_id || result.transaction_id || "N/A"}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={result.prediction === "Fraud" ? "destructive" : "default"}
+                            className="flex items-center gap-1 w-fit"
+                          >
+                            {result.prediction === "Fraud" ? (
+                              <AlertTriangle className="h-3 w-3" />
+                            ) : (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                            {result.prediction}
                           </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">None</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(result.processed_at).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>
+                          <span className={riskScore > 0.5 ? "text-red-600 font-semibold" : ""}>
+                            {(riskScore * 100).toFixed(1)}%
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {result.amount ? `₹${result.amount.toLocaleString()}` : "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {result.channel ? (
+                            <Badge variant="outline">{result.channel}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">N/A</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {result.rule_flags && result.rule_flags.length > 0 ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {result.rule_flags.length} rules
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">None</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {timestamp ? new Date(timestamp).toLocaleString() : "N/A"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

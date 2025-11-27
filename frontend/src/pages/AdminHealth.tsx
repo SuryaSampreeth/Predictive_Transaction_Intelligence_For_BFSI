@@ -229,7 +229,7 @@ const AdminHealth = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="text-2xl font-bold">{systemHealth?.cpu_usage.toFixed(1)}%</p>
+                  <p className="text-2xl font-bold">{(systemHealth?.cpu_usage ?? 0).toFixed(1)}%</p>
                   <Progress
                     value={systemHealth?.cpu_usage || 0}
                     className={getResourceColor(systemHealth?.cpu_usage || 0)}
@@ -247,7 +247,7 @@ const AdminHealth = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="text-2xl font-bold">{systemHealth?.memory_usage.toFixed(1)}%</p>
+                  <p className="text-2xl font-bold">{(systemHealth?.memory_usage ?? 0).toFixed(1)}%</p>
                   <Progress
                     value={systemHealth?.memory_usage || 0}
                     className={getResourceColor(systemHealth?.memory_usage || 0)}
@@ -265,7 +265,7 @@ const AdminHealth = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="text-2xl font-bold">{systemHealth?.disk_usage.toFixed(1)}%</p>
+                  <p className="text-2xl font-bold">{(systemHealth?.disk_usage ?? 0).toFixed(1)}%</p>
                   <Progress
                     value={systemHealth?.disk_usage || 0}
                     className={getResourceColor(systemHealth?.disk_usage || 0)}
@@ -282,7 +282,7 @@ const AdminHealth = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{systemHealth?.api_latency.toFixed(0)}ms</p>
+                <p className="text-2xl font-bold">{(systemHealth?.api_latency ?? 0).toFixed(0)}ms</p>
                 <p className="text-sm text-muted-foreground">Avg response time</p>
               </CardContent>
             </Card>
@@ -295,7 +295,7 @@ const AdminHealth = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{systemHealth?.requests_per_minute}</p>
+                <p className="text-2xl font-bold">{systemHealth?.requests_per_minute ?? 0}</p>
                 <p className="text-sm text-muted-foreground">Current throughput</p>
               </CardContent>
             </Card>

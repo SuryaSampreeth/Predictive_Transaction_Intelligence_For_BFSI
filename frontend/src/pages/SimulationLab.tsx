@@ -72,7 +72,7 @@ const buildRandomTransaction = (index: number, batchSize: number, runTimestamp: 
     return {
       customer_id: uniqueId,
       account_age_days: Math.floor(Math.random() * 25) + 1, // Very new account 1-25 days
-      transaction_amount: Math.floor(Math.random() * 40000 + 12000), // High amount ₹12k-52k
+      amount: Math.floor(Math.random() * 40000 + 12000), // High amount ₹12k-52k
       channel: Math.random() > 0.6 ? "ATM" : "Web",
       kyc_verified: "No", // Not verified
       hour: [0, 1, 2, 3, 22, 23][Math.floor(Math.random() * 6)], // Late night/early morning
@@ -84,7 +84,7 @@ const buildRandomTransaction = (index: number, batchSize: number, runTimestamp: 
   return {
     customer_id: uniqueId,
     account_age_days: Math.floor(Math.random() * 800) + 200,
-    transaction_amount: Math.floor(Math.random() * 4500 + 150),
+    amount: Math.floor(Math.random() * 4500 + 150),
     channel: CHANNELS[Math.floor(Math.random() * CHANNELS.length)],
     kyc_verified: "Yes",
     hour: Math.floor(Math.random() * 10) + 9, // Business hours 9-18
@@ -106,7 +106,7 @@ const SimulationLab = () => {
     const frauds = completed.filter((r) => r.prediction?.prediction === "Fraud");
     const avgProbability = completed.reduce((acc, record) => {
       if (record.prediction) {
-        return acc + record.prediction.fraud_probability;
+        return acc + (record.prediction.risk_score ?? record.prediction.fraud_probability ?? 0);
       }
       return acc;
     }, 0);
@@ -194,7 +194,7 @@ const SimulationLab = () => {
       .filter((record) => record.prediction)
       .map((record, idx) => ({
         index: idx + 1,
-        probability: Math.round(record.prediction!.fraud_probability * 100),
+        probability: Math.round((record.prediction!.risk_score ?? record.prediction!.fraud_probability ?? 0) * 100),
       }));
   }, [completedRecords]);
 
@@ -303,12 +303,12 @@ const SimulationLab = () => {
                     <div>
                       <p className="font-mono text-sm">{record.payload.customer_id}</p>
                       <p className="text-xs text-muted-foreground">
-                        ₹{record.payload.transaction_amount.toLocaleString()} • {record.payload.channel}
+                        ₹{record.payload.amount.toLocaleString()} • {record.payload.channel}
                       </p>
                     </div>
                     {record.status === "success" && record.prediction ? (
                       <Badge variant={record.prediction.prediction === "Fraud" ? "destructive" : "default"}>
-                        {record.prediction.prediction} | {(record.prediction.fraud_probability * 100).toFixed(1)}%
+                        {record.prediction.prediction} | {((record.prediction.risk_score ?? record.prediction.fraud_probability ?? 0) * 100).toFixed(1)}%
                       </Badge>
                     ) : (
                       <Badge variant="outline">Error</Badge>
@@ -344,7 +344,7 @@ const SimulationLab = () => {
                   <tr key={record.id} className="border-t">
                     <td className="py-2">{idx + 1}</td>
                     <td className="font-mono">{record.payload.customer_id}</td>
-                    <td>₹{record.payload.transaction_amount.toLocaleString()}</td>
+                    <td>₹{record.payload.amount.toLocaleString()}</td>
                     <td>{record.payload.channel}</td>
                     <td>{formatTimestamp(record.prediction?.timestamp || record.payload.timestamp)}</td>
                     <td>
@@ -357,7 +357,7 @@ const SimulationLab = () => {
                       )}
                     </td>
                     <td>
-                      {record.prediction ? `${(record.prediction.fraud_probability * 100).toFixed(1)}%` : "--"}
+                      {record.prediction ? `${((record.prediction.risk_score ?? record.prediction.fraud_probability ?? 0) * 100).toFixed(1)}%` : "--"}
                     </td>
                   </tr>
                 ))}

@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, Filter, Download, Calendar } from "lucide-react";
+import { fetchTransactions } from "@/services/api";
 
 interface Transaction {
   transaction_id: string;
@@ -42,25 +43,28 @@ const TransactionSearch = () => {
     riskLevel: "all",
   });
 
-  // Simulated transaction data
-  const { data: transactions } = useQuery({
-    queryKey: ["transactions", searchQuery, filters],
+  // Fetch real transaction data from API
+  const { data: transactionResponse } = useQuery({
+    queryKey: ["search-transactions"],
     queryFn: async () => {
-      // Simulate API call
-      return Array.from({ length: 50 }, (_, i) => ({
-        transaction_id: `TXN${String(i + 1).padStart(8, "0")}`,
-        customer_id: `CUST${String(Math.floor(Math.random() * 1000)).padStart(6, "0")}`,
-        amount: Math.random() * 5000 + 10,
-        merchant_name: ["Amazon", "Walmart", "Target", "Best Buy", "Home Depot"][Math.floor(Math.random() * 5)],
-        transaction_type: ["purchase", "refund", "withdrawal", "transfer"][Math.floor(Math.random() * 4)],
-        transaction_time: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-        location: ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"][Math.floor(Math.random() * 5)],
-        device_type: ["mobile", "web", "atm", "pos"][Math.floor(Math.random() * 4)],
-        risk_score: Math.random(),
-        is_fraud: Math.random() > 0.9,
-      }));
+      const response = await fetchTransactions(0, 500);
+      return response;
     },
   });
+
+  // Map API response to expected format with null safety
+  const transactions: Transaction[] = (transactionResponse?.transactions || []).map((txn: any) => ({
+    transaction_id: txn.transaction_id || txn.customer_id || `TXN${Math.random().toString(36).substr(2, 9)}`,
+    customer_id: txn.customer_id || "Unknown",
+    amount: txn.amount ?? txn.transaction_amount ?? 0,
+    merchant_name: txn.merchant_name || txn.merchant || "Unknown Merchant",
+    transaction_type: txn.transaction_type || txn.channel || "purchase",
+    transaction_time: txn.transaction_time || txn.timestamp || new Date().toISOString(),
+    location: txn.location || "Unknown",
+    device_type: (txn.device_type || txn.channel || "mobile").toLowerCase(),
+    risk_score: txn.risk_score ?? txn.fraud_probability ?? 0,
+    is_fraud: txn.is_fraud ?? (txn.risk_score > 0.7 || txn.fraud_probability > 0.7) ?? false,
+  }));
 
   const filteredTransactions = transactions?.filter((txn) => {
     const matchesSearch =
@@ -92,13 +96,13 @@ const TransactionSearch = () => {
       ...filteredTransactions.map((txn) => [
         txn.transaction_id,
         txn.customer_id,
-        txn.amount.toFixed(2),
+        (txn.amount ?? 0).toFixed(2),
         txn.merchant_name,
         txn.transaction_type,
         txn.transaction_time,
         txn.location,
         txn.device_type,
-        txn.risk_score.toFixed(3),
+        (txn.risk_score ?? 0).toFixed(3),
         txn.is_fraud ? "Yes" : "No",
       ]),
     ]
@@ -267,14 +271,14 @@ const TransactionSearch = () => {
                     >
                       <TableCell className="font-mono text-sm">{txn.transaction_id}</TableCell>
                       <TableCell className="font-mono text-sm">{txn.customer_id}</TableCell>
-                      <TableCell className="font-medium">${txn.amount.toFixed(2)}</TableCell>
+                      <TableCell className="font-medium">₹{(txn.amount ?? 0).toLocaleString()}</TableCell>
                       <TableCell>{txn.merchant_name}</TableCell>
                       <TableCell className="capitalize">{txn.transaction_type}</TableCell>
                       <TableCell className="text-sm">{new Date(txn.transaction_time).toLocaleString()}</TableCell>
                       <TableCell className="capitalize">{txn.device_type}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={getRiskColor(txn.risk_score)}>
-                          {(txn.risk_score * 100).toFixed(0)}%
+                        <Badge variant="secondary" className={getRiskColor(txn.risk_score ?? 0)}>
+                          {((txn.risk_score ?? 0) * 100).toFixed(0)}%
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -311,12 +315,12 @@ const TransactionSearch = () => {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Amount</Label>
-                  <p className="text-xl font-bold">${selectedTransaction.amount.toFixed(2)}</p>
+                  <p className="text-xl font-bold">₹{(selectedTransaction.amount ?? 0).toLocaleString()}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Risk Score</Label>
-                  <Badge className={getRiskColor(selectedTransaction.risk_score)}>
-                    {(selectedTransaction.risk_score * 100).toFixed(1)}%
+                  <Badge className={getRiskColor(selectedTransaction.risk_score ?? 0)}>
+                    {((selectedTransaction.risk_score ?? 0) * 100).toFixed(1)}%
                   </Badge>
                 </div>
                 <div>

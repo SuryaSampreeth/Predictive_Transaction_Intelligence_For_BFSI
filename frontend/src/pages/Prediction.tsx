@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, AlertTriangle, CheckCircle, Brain } from "lucide-react";
+import { Shield, AlertTriangle, CheckCircle, Brain, Sparkles, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { predictFraud, PredictionRequest, PredictionResponse } from "@/services/api";
+import { predictFraud, PredictionRequest, PredictionResponse, getLLMExplanation } from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 
 const PredictionPage = () => {
   const [loading, setLoading] = useState(false);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmExplanation, setLlmExplanation] = useState<string | null>(null);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [formData, setFormData] = useState<PredictionRequest>({
     customer_id: "",
@@ -26,6 +28,7 @@ const PredictionPage = () => {
     e.preventDefault();
     setLoading(true);
     setPrediction(null);
+    setLlmExplanation(null);  // Clear LLM explanation for new prediction
 
     try {
       const result = await predictFraud(formData);
@@ -41,6 +44,33 @@ const PredictionPage = () => {
       toast.error("Failed to analyze transaction. Please check if backend is running.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGetLLMExplanation = async () => {
+    if (!prediction) return;
+    
+    setLlmLoading(true);
+    try {
+      const response = await getLLMExplanation({
+        transaction_id: prediction.transaction_id,
+        customer_id: formData.customer_id,
+        amount: formData.amount,
+        channel: formData.channel,
+        account_age_days: formData.account_age_days,
+        kyc_verified: formData.kyc_verified,
+        hour: formData.hour || 0,
+        prediction: prediction.prediction,
+        risk_score: prediction.risk_score,
+        risk_level: prediction.risk_score > 0.7 ? "High" : prediction.risk_score > 0.3 ? "Medium" : "Low",
+        risk_factors: prediction.rule_flags || [],
+      });
+      setLlmExplanation(response.explanation);
+      toast.success("AI explanation generated!");
+    } catch (error) {
+      toast.error("Failed to generate AI explanation");
+    } finally {
+      setLlmLoading(false);
     }
   };
 
@@ -289,6 +319,46 @@ const PredictionPage = () => {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* LLM-Powered Explanation - Milestone 3 */}
+                <Card className="border-purple-200 bg-purple-50/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-purple-600" />
+                        AI-Powered Explanation
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={handleGetLLMExplanation}
+                        disabled={llmLoading}
+                        className="h-7 text-xs"
+                      >
+                        {llmLoading ? (
+                          <>
+                            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            {llmExplanation ? "Regenerate" : "Generate"}
+                          </>
+                        )}
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {llmExplanation ? (
+                      <p className="text-sm leading-relaxed text-purple-900">{llmExplanation}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Click "Generate" to get an AI-powered natural language explanation of this prediction using Google Gemini.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
 
                 {/* Analysis Details */}
                 <Card>

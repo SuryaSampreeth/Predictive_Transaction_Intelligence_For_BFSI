@@ -122,7 +122,7 @@ const ModelingWorkspace = () => {
                 <CardTitle className="text-base">Accuracy</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{metrics ? (metrics.accuracy * 100).toFixed(1) : "--"}%</p>
+                <p className="text-2xl font-bold">{metrics?.accuracy ? ((metrics.accuracy ?? 0) * 100).toFixed(1) : "--"}%</p>
                 <p className="text-sm text-muted-foreground">On validation set</p>
               </CardContent>
             </Card>
@@ -147,19 +147,19 @@ const ModelingWorkspace = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Accuracy</p>
-                    <p className="text-2xl font-bold">{(metrics.accuracy * 100).toFixed(1)}%</p>
+                    <p className="text-2xl font-bold">{((metrics.accuracy ?? 0) * 100).toFixed(1)}%</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Precision</p>
-                    <p className="text-2xl font-bold">{(metrics.precision * 100).toFixed(1)}%</p>
+                    <p className="text-2xl font-bold">{((metrics.precision ?? 0) * 100).toFixed(1)}%</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Recall</p>
-                    <p className="text-2xl font-bold">{(metrics.recall * 100).toFixed(1)}%</p>
+                    <p className="text-2xl font-bold">{((metrics.recall ?? 0) * 100).toFixed(1)}%</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">F1 Score</p>
-                    <p className="text-2xl font-bold">{(metrics.f1_score * 100).toFixed(1)}%</p>
+                    <p className="text-2xl font-bold">{((metrics.f1_score ?? 0) * 100).toFixed(1)}%</p>
                   </div>
                 </div>
               </CardContent>
@@ -246,19 +246,19 @@ const ModelingWorkspace = () => {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
                               <p className="text-xs text-muted-foreground">Accuracy</p>
-                              <p className="text-xl font-bold">{(jobDetail.metrics.accuracy * 100).toFixed(1)}%</p>
+                              <p className="text-xl font-bold">{((jobDetail.metrics.accuracy ?? 0) * 100).toFixed(1)}%</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">Precision</p>
-                              <p className="text-xl font-bold">{(jobDetail.metrics.precision * 100).toFixed(1)}%</p>
+                              <p className="text-xl font-bold">{((jobDetail.metrics.precision ?? 0) * 100).toFixed(1)}%</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">Recall</p>
-                              <p className="text-xl font-bold">{(jobDetail.metrics.recall * 100).toFixed(1)}%</p>
+                              <p className="text-xl font-bold">{((jobDetail.metrics.recall ?? 0) * 100).toFixed(1)}%</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">F1 Score</p>
-                              <p className="text-xl font-bold">{(jobDetail.metrics.f1_score * 100).toFixed(1)}%</p>
+                              <p className="text-xl font-bold">{((jobDetail.metrics.f1_score ?? 0) * 100).toFixed(1)}%</p>
                             </div>
                           </div>
                         </CardContent>

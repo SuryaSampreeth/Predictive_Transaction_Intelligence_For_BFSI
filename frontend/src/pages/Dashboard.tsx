@@ -144,15 +144,15 @@ const Dashboard = () => {
     // Use real stats from API if available
     if (fraudStats && fraudStats.total > 0) {
       return {
-        total: fraudStats.total,
-        fraudCount: fraudStats.fraud_count,
-        legitimateCount: fraudStats.legitimate_count,
-        fraudRate: fraudStats.fraud_rate,
-        avgAmount: (fraudStats.avg_fraud_amount + fraudStats.avg_legitimate_amount) / 2,
-        maxAmount: Math.max(...filteredTransactions.map((t) => t.amount), 0),
-        minAmount: Math.min(...filteredTransactions.map((t) => t.amount), 0),
+        total: fraudStats.total || 0,
+        fraudCount: fraudStats.fraud_count || 0,
+        legitimateCount: fraudStats.legitimate_count || 0,
+        fraudRate: fraudStats.fraud_rate || 0,
+        avgAmount: ((fraudStats.avg_fraud_amount || 0) + (fraudStats.avg_legitimate_amount || 0)) / 2 || 0,
+        maxAmount: filteredTransactions.length > 0 ? Math.max(...filteredTransactions.map((t) => t.amount || 0)) : 0,
+        minAmount: filteredTransactions.length > 0 ? Math.min(...filteredTransactions.map((t) => t.amount || 0)) : 0,
         uniqueCustomers: new Set(filteredTransactions.map((t) => t.customerId)).size,
-        totalAmount: filteredTransactions.reduce((sum, t) => sum + t.amount, 0),
+        totalAmount: filteredTransactions.reduce((sum, t) => sum + (t.amount || 0), 0),
       };
     }
 
@@ -160,10 +160,10 @@ const Dashboard = () => {
     const total = filteredTransactions.length;
     const fraudCount = filteredTransactions.filter((t) => t.isFraud).length;
     const legitimateCount = total - fraudCount;
-    const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
-    const avgAmount = totalAmount / total || 0;
-    const maxAmount = Math.max(...filteredTransactions.map((t) => t.amount), 0);
-    const minAmount = Math.min(...filteredTransactions.map((t) => t.amount), 0);
+    const totalAmount = filteredTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const avgAmount = total > 0 ? totalAmount / total : 0;
+    const maxAmount = filteredTransactions.length > 0 ? Math.max(...filteredTransactions.map((t) => t.amount || 0)) : 0;
+    const minAmount = filteredTransactions.length > 0 ? Math.min(...filteredTransactions.map((t) => t.amount || 0)) : 0;
     const fraudRate = total > 0 ? (fraudCount / total) * 100 : 0;
     const uniqueCustomers = new Set(filteredTransactions.map((t) => t.customerId)).size;
 

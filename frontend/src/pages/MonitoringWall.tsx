@@ -126,10 +126,10 @@ const MonitoringWall = () => {
                         </div>
                         <p className="font-semibold">{alert.type}</p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          TXN: {alert.transaction_id} • ₹{alert.amount.toLocaleString()} • {alert.channel}
+                          TXN: {alert.transaction_id} • ₹{(alert.amount || 0).toLocaleString()} • {alert.channel || 'N/A'}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Risk: {(alert.fraud_probability * 100).toFixed(1)}%
+                          Risk: {((alert.fraud_probability || 0) * 100).toFixed(1)}%
                         </p>
                       </div>
                       <div className="text-right">
@@ -186,16 +186,16 @@ const MonitoringWall = () => {
                       </div>
                       <div>
                         <p className="text-muted-foreground text-xs">Amount</p>
-                        <p className="font-medium">₹{txn.amount.toLocaleString()}</p>
+                        <p className="font-medium">₹{(txn.amount || 0).toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground text-xs">Channel</p>
-                        <p className="font-medium">{txn.channel}</p>
+                        <p className="font-medium">{txn.channel || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground text-xs">Risk</p>
                         <p className={`font-medium ${txn.risk_level === "High" ? "text-red-600" : "text-green-600"}`}>
-                          {txn.risk_level} ({(txn.fraud_score * 100).toFixed(0)}%)
+                          {txn.risk_level || 'Low'} ({((txn.fraud_score || 0) * 100).toFixed(0)}%)
                         </p>
                       </div>
                     </div>
@@ -210,7 +210,7 @@ const MonitoringWall = () => {
         </Card>
       </div>
 
-      {health && (
+      {health && health.services && (
         <Card>
           <CardHeader>
             <CardTitle>System Health</CardTitle>
@@ -219,11 +219,11 @@ const MonitoringWall = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <h4 className="font-semibold">Services</h4>
-                {Object.entries(health.services).map(([name, service]: [string, any]) => (
+                {Object.entries(health.services || {}).map(([name, service]: [string, any]) => (
                   <div key={name} className="flex items-center justify-between text-sm">
                     <span className="capitalize">{name}</span>
-                    <Badge variant={service.status === "up" ? "default" : "destructive"}>
-                      {service.status} ({service.latency_ms}ms)
+                    <Badge variant={service?.status === "up" ? "default" : "destructive"}>
+                      {service?.status || "unknown"} ({service?.latency_ms || 0}ms)
                     </Badge>
                   </div>
                 ))}
@@ -235,19 +235,19 @@ const MonitoringWall = () => {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>CPU</span>
-                      <span>{health.resources.cpu_usage}%</span>
+                      <span>{health.resources?.cpu_usage || 0}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${health.resources.cpu_usage}%` }} />
+                      <div className="h-full bg-primary" style={{ width: `${health.resources?.cpu_usage || 0}%` }} />
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Memory</span>
-                      <span>{health.resources.memory_usage}%</span>
+                      <span>{health.resources?.memory_usage || 0}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${health.resources.memory_usage}%` }} />
+                      <div className="h-full bg-primary" style={{ width: `${health.resources?.memory_usage || 0}%` }} />
                     </div>
                   </div>
                 </div>
@@ -258,15 +258,15 @@ const MonitoringWall = () => {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Requests/min</span>
-                    <span className="font-medium">{health.throughput.requests_per_minute}</span>
+                    <span className="font-medium">{health.throughput?.requests_per_minute || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Predictions/min</span>
-                    <span className="font-medium">{health.throughput.predictions_per_minute}</span>
+                    <span className="font-medium">{health.throughput?.predictions_per_minute || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Avg Response</span>
-                    <span className="font-medium">{health.throughput.avg_response_time_ms}ms</span>
+                    <span className="font-medium">{health.throughput?.avg_response_time_ms || 0}ms</span>
                   </div>
                 </div>
               </div>

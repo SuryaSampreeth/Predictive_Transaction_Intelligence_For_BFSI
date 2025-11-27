@@ -172,8 +172,8 @@ const Customer360 = () => {
                       <TableCell className="font-mono text-sm">{customer.customer_id}</TableCell>
                       <TableCell>{customer.name}</TableCell>
                       <TableCell>{customer.email}</TableCell>
-                      <TableCell>{customer.total_transactions}</TableCell>
-                      <TableCell>${customer.lifetime_value.toFixed(2)}</TableCell>
+                      <TableCell>{customer.total_transactions ?? 0}</TableCell>
+                      <TableCell>₹{(customer.lifetime_value ?? 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge className={getRiskColor(customer.risk_level)}>
                           {customer.risk_level}
@@ -220,7 +220,7 @@ const Customer360 = () => {
                     <CardContent>
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-green-600" />
-                        <p className="text-2xl font-bold">${selectedCustomer.lifetime_value.toFixed(0)}</p>
+                        <p className="text-2xl font-bold">₹{(selectedCustomer.lifetime_value ?? 0).toLocaleString()}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -234,7 +234,7 @@ const Customer360 = () => {
                     <CardContent>
                       <div className="flex items-center gap-2">
                         <Activity className="h-4 w-4 text-blue-600" />
-                        <p className="text-2xl font-bold">{selectedCustomer.total_transactions}</p>
+                        <p className="text-2xl font-bold">{selectedCustomer.total_transactions ?? 0}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -261,7 +261,7 @@ const Customer360 = () => {
                     <CardContent>
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-red-600" />
-                        <p className="text-2xl font-bold">{selectedCustomer.fraud_incidents}</p>
+                        <p className="text-2xl font-bold">{selectedCustomer.fraud_incidents ?? 0}</p>
                       </div>
                     </CardContent>
                   </Card>
