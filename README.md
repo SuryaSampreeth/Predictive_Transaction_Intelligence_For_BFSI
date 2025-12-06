@@ -20,7 +20,7 @@
 
 **TransIntelliFlow** is an enterprise-grade fraud detection system that combines Machine Learning, AI-assisted explainability, and realistic simulations to identify fraudulent transactions in real-time for the Banking, Financial Services, and Insurance (BFSI) sector.
 ---
-
+---
 ## 🏗️ Architecture
 
 ```
