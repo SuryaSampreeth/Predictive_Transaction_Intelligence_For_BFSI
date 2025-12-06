@@ -12,19 +12,6 @@ interface FraudHeatmapProps {
 }
 
 export const FraudHeatmap = ({ transactions, channelStats }: FraudHeatmapProps) => {
-  // Generate realistic Indian location data
-  const mockLocationData = [
-    { location: 'Mumbai', fraudRate: 9.2, count: 1547, avgAmount: 8520 },
-    { location: 'Delhi', fraudRate: 10.5, count: 1432, avgAmount: 7890 },
-    { location: 'Bangalore', fraudRate: 8.1, count: 1856, avgAmount: 9240 },
-    { location: 'Hyderabad', fraudRate: 7.8, count: 1234, avgAmount: 6780 },
-    { location: 'Chennai', fraudRate: 8.9, count: 1098, avgAmount: 7450 },
-    { location: 'Kolkata', fraudRate: 9.7, count: 987, avgAmount: 6920 },
-    { location: 'Pune', fraudRate: 8.4, count: 1345, avgAmount: 8100 },
-    { location: 'Ahmedabad', fraudRate: 9.1, count: 876, avgAmount: 7230 },
-    { location: 'International', fraudRate: 15.2, count: 234, avgAmount: 12450 },
-  ];
-  
   // Build location stats from transactions if available
   const locationFromTransactions = transactions.length > 0
     ? Object.values(
@@ -43,10 +30,11 @@ export const FraudHeatmap = ({ transactions, channelStats }: FraudHeatmapProps) 
         location: item.location,
         count: item.count,
         fraudRate: item.count ? (item.fraudCount / item.count) * 100 : 0,
-        avgAmount: undefined,
+        avgAmount: undefined as number | undefined,
       }))
     : [];
 
+  // Use real data from transactions or channelStats - no mock fallback
   const data = locationFromTransactions.length > 0
     ? locationFromTransactions
     : channelStats && channelStats.length > 0
@@ -56,7 +44,7 @@ export const FraudHeatmap = ({ transactions, channelStats }: FraudHeatmapProps) 
         count: stat.total,
         avgAmount: stat.avg_amount,
       }))
-    : mockLocationData;
+    : [];
 
   const sortedData = [...data].sort((a, b) => b.fraudRate - a.fraudRate);
 
@@ -66,6 +54,22 @@ export const FraudHeatmap = ({ transactions, channelStats }: FraudHeatmapProps) 
     if (rate > 5) return "bg-accent";
     return "bg-success";
   };
+
+  // Show empty state when no data
+  if (sortedData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Fraud Rate by Location</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+            No location data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

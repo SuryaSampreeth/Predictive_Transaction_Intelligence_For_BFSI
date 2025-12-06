@@ -105,9 +105,9 @@ const MonitoringWall = () => {
           <CardContent>
             <ScrollArea className="h-[500px] pr-4">
               <div className="space-y-3">
-                {alerts.map((alert: any) => (
+                {alerts.map((alert: any, index: number) => (
                   <div
-                    key={alert.alert_id}
+                    key={`${alert.alert_id}-${index}`}
                     className={`p-4 rounded-lg border-l-4 ${
                       alert.severity === "critical"
                         ? "border-l-red-500 bg-red-50"
@@ -166,9 +166,9 @@ const MonitoringWall = () => {
           <CardContent>
             <ScrollArea className="h-[500px] pr-4">
               <div className="space-y-3">
-                {transactions.map((txn: any) => (
+                {transactions.map((txn: any, index: number) => (
                   <div
-                    key={txn.transaction_id}
+                    key={`${txn.transaction_id}-${index}`}
                     className={`p-3 rounded-lg border ${
                       txn.status === "flagged" ? "border-red-200 bg-red-50" : "border-gray-200"
                     }`}

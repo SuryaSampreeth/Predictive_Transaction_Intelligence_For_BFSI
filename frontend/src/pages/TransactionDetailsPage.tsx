@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -17,8 +19,12 @@ import {
   RefreshCw,
   Download,
   Flag,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
+import { submitFeedback, getFeedbackByTransaction, fetchTransactionById } from "@/services/api";
 
 interface TransactionDetail {
   transaction_id: string;
@@ -52,52 +58,129 @@ const TransactionDetailsPage = () => {
   const [transaction, setTransaction] = useState<TransactionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [relatedTransactions, setRelatedTransactions] = useState<TransactionDetail[]>([]);
+  
+  // Feedback state
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<boolean | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [showFeedbackNotes, setShowFeedbackNotes] = useState(false);
+  const [existingFeedback, setExistingFeedback] = useState<any>(null);
 
   useEffect(() => {
     loadTransactionDetails();
   }, [id]);
 
+  useEffect(() => {
+    // Check if feedback already exists for this transaction
+    if (transaction?.transaction_id) {
+      checkExistingFeedback();
+    }
+  }, [transaction?.transaction_id]);
+
+  const checkExistingFeedback = async () => {
+    if (!transaction?.transaction_id) return;
+    try {
+      const result = await getFeedbackByTransaction(transaction.transaction_id);
+      if (result.found && result.feedback) {
+        setExistingFeedback(result.feedback);
+        setFeedbackSubmitted(result.feedback.is_correct);
+      }
+    } catch (error) {
+      console.error("Failed to check existing feedback:", error);
+    }
+  };
+
+  const handleFeedback = async (isCorrect: boolean) => {
+    if (!transaction) return;
+    
+    setFeedbackLoading(true);
+    try {
+      await submitFeedback({
+        transaction_id: transaction.transaction_id,
+        prediction: transaction.is_fraud ? "Fraud" : "Legitimate",
+        is_correct: isCorrect,
+        risk_score: transaction.fraud_probability,
+        notes: feedbackNotes || undefined,
+      });
+      
+      setFeedbackSubmitted(isCorrect);
+      setShowFeedbackNotes(false);
+      
+      if (isCorrect) {
+        toast.success("✓ Feedback recorded: Prediction marked as correct");
+      } else {
+        toast.info("Feedback recorded: Prediction marked as incorrect - flagged for review");
+      }
+    } catch (error) {
+      toast.error("Failed to submit feedback");
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
   const loadTransactionDetails = async () => {
+    if (!id) {
+      toast.error("Transaction ID not provided");
+      navigate("/dashboard");
+      return;
+    }
+
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // Simulated transaction detail
-      const mockTransaction: TransactionDetail = {
-        transaction_id: id || "TXN001234",
-        customer_id: "CUST5678",
-        timestamp: new Date().toISOString(),
-        amount: 45000,
-        channel: "Mobile",
-        kyc_verified: "Yes",
-        account_age_days: 180,
-        hour: 14,
-        is_fraud: 1,
-        fraud_probability: 0.92,
-        risk_level: "High",
-        device_info: {
-          type: "Mobile",
-          os: "Android 13",
-          browser: "Chrome Mobile 120",
-          ip_address: "103.25.45.67"
+      // Fetch real transaction from API
+      const apiTransaction = await fetchTransactionById(id);
+      
+      if (!apiTransaction) {
+        toast.error("Transaction not found");
+        navigate("/dashboard");
+        return;
+      }
+      
+      // Safely extract location info
+      const locationInfo = apiTransaction.location;
+      let city = "Unknown";
+      let state = "Unknown";
+      
+      if (typeof locationInfo === 'string') {
+        city = locationInfo;
+      } else if (locationInfo && typeof locationInfo === 'object') {
+        city = (locationInfo as any).city || "Unknown";
+        state = (locationInfo as any).state || "Unknown";
+      }
+      
+      // Transform API response to TransactionDetail format
+      const transactionDetail: TransactionDetail = {
+        transaction_id: apiTransaction.transaction_id,
+        customer_id: apiTransaction.customer_id,
+        timestamp: apiTransaction.timestamp,
+        amount: apiTransaction.transaction_amount,
+        channel: apiTransaction.channel || "Unknown",
+        kyc_verified: apiTransaction.kyc_verified || "Unknown",
+        account_age_days: apiTransaction.account_age_days || 0,
+        hour: apiTransaction.hour || new Date(apiTransaction.timestamp).getHours(),
+        is_fraud: apiTransaction.is_fraud,
+        fraud_probability: (apiTransaction as any).fraud_probability,
+        risk_level: apiTransaction.is_fraud === 1 ? "High" : "Low",
+        device_info: (apiTransaction as any).device_info || {
+          type: apiTransaction.channel || "Unknown",
+          os: "Unknown",
+          browser: "Unknown",
+          ip_address: "Unknown"
         },
         location: {
-          city: "Mumbai",
-          state: "Maharashtra",
+          city,
+          state, 
           country: "India",
-          coordinates: { lat: 19.0760, lng: 72.8777 }
+          coordinates: { lat: 0, lng: 0 }
         }
       };
       
-      setTransaction(mockTransaction);
-      
-      // Mock related transactions
-      setRelatedTransactions([
-        { ...mockTransaction, transaction_id: "TXN001233", amount: 5000, is_fraud: 0 },
-        { ...mockTransaction, transaction_id: "TXN001232", amount: 3500, is_fraud: 0 },
-      ]);
+      setTransaction(transactionDetail);
+      setRelatedTransactions([]); // Related transactions can be fetched separately if needed
     } catch (error) {
       console.error("Failed to load transaction details:", error);
       toast.error("Failed to load transaction details");
+      navigate("/dashboard");
     } finally {
       setLoading(false);
     }
@@ -274,6 +357,120 @@ const TransactionDetailsPage = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Feedback Loop Section */}
+            <Card className="border-l-4 border-l-blue-500 bg-blue-500/5 dark:bg-blue-950/20">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  Feedback Loop
+                </CardTitle>
+                <CardDescription>
+                  Help improve our fraud detection model by verifying this prediction
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {existingFeedback && feedbackSubmitted !== null ? (
+                  <div className={`flex items-center gap-3 p-4 rounded-lg ${
+                    feedbackSubmitted 
+                      ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300" 
+                      : "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"
+                  }`}>
+                    {feedbackSubmitted ? (
+                      <>
+                        <CheckCircle className="h-6 w-6" />
+                        <div>
+                          <p className="font-medium">Prediction verified as correct</p>
+                          <p className="text-sm opacity-80">
+                            Feedback submitted on {new Date(existingFeedback.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="h-6 w-6" />
+                        <div>
+                          <p className="font-medium">Prediction marked as incorrect</p>
+                          <p className="text-sm opacity-80">Flagged for model review</p>
+                          {existingFeedback.notes && (
+                            <p className="text-sm mt-1 italic">"{existingFeedback.notes}"</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Was this {transaction.is_fraud ? "fraud" : "legitimate"} prediction correct?
+                    </p>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleFeedback(true)}
+                        disabled={feedbackLoading}
+                        className="flex-1 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
+                      >
+                        {feedbackLoading ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <ThumbsUp className="h-4 w-4 mr-2" />
+                        )}
+                        Yes, Correct
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowFeedbackNotes(true)}
+                        disabled={feedbackLoading}
+                        className="flex-1 border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      >
+                        <ThumbsDown className="h-4 w-4 mr-2" />
+                        No, Incorrect
+                      </Button>
+                    </div>
+                    
+                    {showFeedbackNotes && (
+                      <div className="space-y-3 pt-3 border-t">
+                        <Label htmlFor="feedback-notes" className="text-sm font-medium">
+                          Add notes about the error (optional)
+                        </Label>
+                        <Textarea
+                          id="feedback-notes"
+                          placeholder={`e.g., This was actually ${transaction.is_fraud ? "a legitimate" : "a fraudulent"} transaction because...`}
+                          value={feedbackNotes}
+                          onChange={(e) => setFeedbackNotes(e.target.value)}
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleFeedback(false)}
+                            disabled={feedbackLoading}
+                            className="flex-1"
+                          >
+                            {feedbackLoading ? (
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <ThumbsDown className="h-4 w-4 mr-2" />
+                            )}
+                            Submit as Incorrect
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setShowFeedbackNotes(false);
+                              setFeedbackNotes("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="customer">

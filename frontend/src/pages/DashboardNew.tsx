@@ -17,7 +17,7 @@ import {
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { FraudTrendChart } from "@/components/dashboard/FraudTrendChart";
 import { FraudByTypeChart } from "@/components/dashboard/FraudByTypeChart";
-import { FraudHeatmap } from "@/components/dashboard/FraudHeatmap";
+import { FraudByHourChart } from "@/components/dashboard/FraudByHourChart";
 import { TransactionsTable } from "@/components/dashboard/TransactionsTable";
 import { ModelPerformance } from "@/components/dashboard/ModelPerformance";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ import { Card, CardContent } from "@/components/ui/card";
 interface Transaction {
   id: string;
   date: string;
+  createdAt: string;
   amount: number;
   type: string;
   channel: string;
@@ -52,7 +53,7 @@ const DashboardNew = () => {
   // Filter states
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [fraudFilter, setFraudFilter] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<string>("7days");
+  const [dateRange, setDateRange] = useState<string>("all");
   
   // Data states
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -67,6 +68,7 @@ const DashboardNew = () => {
   const convertTransaction = (apiTxn: APITransaction): Transaction => ({
     id: apiTxn.transaction_id,
     date: apiTxn.timestamp,
+    createdAt: apiTxn.created_at || apiTxn.timestamp,
     amount: apiTxn.transaction_amount,
     type: apiTxn.transaction_type || apiTxn.channel,
     channel: apiTxn.channel,
@@ -102,7 +104,7 @@ const DashboardNew = () => {
 
       // Fetch all data in parallel
       const [txnData, statsData, channelData, metricsData] = await Promise.all([
-        fetchTransactions(0, 1000, filters.is_fraud, filters.channel).catch(err => {
+        fetchTransactions(0, 10000, filters.is_fraud, filters.channel).catch(err => {
           console.error("Failed to fetch transactions:", err);
           return { transactions: [], total: 0, page: 1, limit: 100 };
         }),
@@ -150,23 +152,45 @@ const DashboardNew = () => {
     // TODO: Implement CSV export
   };
 
-  // Filter transactions based on date range
+  // Filter transactions based on date range (using timestamp - the actual transaction date)
   const filteredTransactionsByDate = transactions.filter(txn => {
-    const txnDate = new Date(txn.date);
-    const now = new Date();
-    const daysDiff = Math.floor((now.getTime() - txnDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (dateRange === "all") return true;
     
-    switch(dateRange) {
-      case "today":
-        return daysDiff === 0;
-      case "7days":
-        return daysDiff <= 7;
-      case "30days":
-        return daysDiff <= 30;
-      case "90days":
-        return daysDiff <= 90;
-      default:
-        return true;
+    try {
+      // Use timestamp for filtering (the business transaction date)
+      const txnDate = new Date(txn.date);
+      const now = new Date();
+      
+      // Validate date
+      if (isNaN(txnDate.getTime())) {
+        console.warn('Invalid transaction timestamp:', txn.date);
+        return false;
+      }
+      
+      // Set time to midnight for accurate day comparison
+      const txnMidnight = new Date(txnDate);
+      txnMidnight.setHours(0, 0, 0, 0);
+      
+      const nowMidnight = new Date(now);
+      nowMidnight.setHours(0, 0, 0, 0);
+      
+      const daysDiff = Math.floor((nowMidnight.getTime() - txnMidnight.getTime()) / (1000 * 60 * 60 * 24));
+      
+      switch(dateRange) {
+        case "today":
+          return daysDiff === 0;
+        case "7days":
+          return daysDiff >= 0 && daysDiff <= 7;
+        case "30days":
+          return daysDiff >= 0 && daysDiff <= 30;
+        case "90days":
+          return daysDiff >= 0 && daysDiff <= 90;
+        default:
+          return true;
+      }
+    } catch (error) {
+      console.error('Error filtering transaction date:', error, txn);
+      return false;
     }
   });
 
@@ -289,14 +313,14 @@ const DashboardNew = () => {
                 </div>
               </div>
               
-              {(channelFilter !== "all" || fraudFilter !== "all" || dateRange !== "7days") && (
+              {(channelFilter !== "all" || fraudFilter !== "all" || dateRange !== "all") && (
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => {
                     setChannelFilter("all");
                     setFraudFilter("all");
-                    setDateRange("7days");
+                    setDateRange("all");
                   }}
                 >
                   Clear Filters
@@ -353,7 +377,7 @@ const DashboardNew = () => {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <FraudByTypeChart channelStats={channelStats} />
-          <FraudHeatmap transactions={filteredTransactionsByDate} channelStats={channelStats} />
+          <FraudByHourChart transactions={filteredTransactionsByDate} />
         </div>
 
         <FraudTrendChart transactions={filteredTransactionsByDate} />

@@ -86,8 +86,11 @@
 - 🎯 **Risk Indicators** - Visual risk level display
 - 📱 **Responsive Design** - Works on all devices
 - ⚠️ **Alert System** - Real-time fraud notifications
+- 📧 **Email Alert Simulation** - Automated security alerts for high-risk transactions with recipient tracking
 - 🧪 **Simulation Lab Overlay** - Blend the last 500 simulation transactions into the dashboard without disturbing the curated baseline dataset
 - 🤝 **Modeling Workspace AI** - Gemini explains model metrics and per-transaction predictions directly inside the app
+- 💬 **Feedback Loop** - Mark predictions as correct/incorrect for model improvement
+- 🌙 **Dark Mode** - Full dark mode support across all screens
 
 ---
 

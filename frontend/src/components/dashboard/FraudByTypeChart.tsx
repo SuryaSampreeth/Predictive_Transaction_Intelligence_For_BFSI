@@ -16,15 +16,23 @@ interface FraudByTypeChartProps {
 }
 
 export const FraudByTypeChart = ({ channelStats }: FraudByTypeChartProps) => {
-  // If no real data, generate realistic mock data for Indian banking channels
-  const mockData = !channelStats || channelStats.length === 0 ? [
-    { channel: 'Mobile', total: 2547, fraud: 228, fraud_rate: 8.95 },
-    { channel: 'ATM', total: 1832, fraud: 183, fraud_rate: 9.99 },
-    { channel: 'Web', total: 2156, fraud: 216, fraud_rate: 10.02 },
-    { channel: 'POS', total: 1465, fraud: 117, fraud_rate: 7.99 },
-  ] : channelStats;
+  // No mock data - use only real channel statistics from API
+  if (!channelStats || channelStats.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Fraud by Channel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            No channel data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
-  const data = mockData.map(stat => {
+  const data = channelStats.map(stat => {
     const fraudCount = Math.floor((stat as any).fraud_count ?? (stat.total * stat.fraud_rate / 100));
     const legitCount = Math.max(0, stat.total - fraudCount);
     return {
@@ -42,11 +50,20 @@ export const FraudByTypeChart = ({ channelStats }: FraudByTypeChartProps) => {
         <CardTitle>Fraud by Channel</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data}>
+        <ResponsiveContainer width="100%" height={360}>
+          <BarChart data={data} margin={{ top: 8, right: 24, left: 88, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="type" stroke="hsl(var(--muted-foreground))" />
-            <YAxis stroke="hsl(var(--muted-foreground))" label={{ value: "Transaction Count", angle: -90, position: "insideLeft" }} />
+            <YAxis
+              stroke="hsl(var(--muted-foreground))"
+              label={{
+                value: "Transaction Count",
+                angle: -90,
+                position: "insideLeft",
+                dy: 0,
+                style: { textAnchor: "middle" },
+              }}
+            />
             <Tooltip
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",

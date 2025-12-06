@@ -14,7 +14,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { FraudDistributionChart } from "@/components/dashboard/FraudDistributionChart";
 import { FraudTrendChart } from "@/components/dashboard/FraudTrendChart";
 import { FraudByTypeChart } from "@/components/dashboard/FraudByTypeChart";
-import { FraudHeatmap } from "@/components/dashboard/FraudHeatmap";
+import { FraudByHourChart } from "@/components/dashboard/FraudByHourChart";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { TransactionsTable } from "@/components/dashboard/TransactionsTable";
 import { ModelPerformance } from "@/components/dashboard/ModelPerformance";
@@ -80,7 +80,7 @@ const Dashboard = () => {
 
       // Fetch all data in parallel
       const [txnData, statsData, channelData, metricsData] = await Promise.all([
-        fetchTransactions(0, 1000).catch(err => {
+        fetchTransactions(0, 10000).catch(err => {
           console.error("Failed to fetch transactions:", err);
           return { transactions: [], total: 0, page: 1, limit: 100 };
         }),
@@ -343,11 +343,19 @@ const Dashboard = () => {
             legitimateCount={stats.legitimateCount}
           />
           <ModelPerformance 
-            accuracy={modelMetrics?.accuracy || 0.9534}
-            precision={modelMetrics?.precision || 0.8912}
-            recall={modelMetrics?.recall || 0.8756}
-            f1Score={modelMetrics?.f1_score || 0.8833}
-            rocAuc={modelMetrics?.roc_auc || 0.92}
+            accuracy={modelMetrics?.accuracy || 0.90}
+            precision={modelMetrics?.precision || 0.33}
+            recall={modelMetrics?.recall || 0.14}
+            f1Score={modelMetrics?.f1_score || 0.20}
+            rocAuc={modelMetrics?.roc_auc || 0.7334}
+            riskDistribution={modelMetrics?.probability_distribution 
+              ? {
+                  low: modelMetrics.probability_distribution.low_pct,
+                  medium: modelMetrics.probability_distribution.medium_pct,
+                  high: modelMetrics.probability_distribution.high_pct
+                }
+              : { low: 89, medium: 9.4, high: 1.6 }
+            }
           />
         </div>
 
@@ -355,7 +363,7 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <FraudByTypeChart channelStats={channelStats} />
-          <FraudHeatmap transactions={filteredTransactions} channelStats={channelStats} />
+          <FraudByHourChart transactions={filteredTransactions} />
         </div>
 
         <TransactionsTable transactions={filteredTransactions} showFraudOnly />

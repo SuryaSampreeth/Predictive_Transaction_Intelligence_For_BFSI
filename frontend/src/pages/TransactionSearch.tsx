@@ -35,6 +35,7 @@ interface Transaction {
 const TransactionSearch = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [limit, setLimit] = useState<number>(500);
   const [filters, setFilters] = useState({
     dateRange: "all",
     minAmount: "",
@@ -43,61 +44,115 @@ const TransactionSearch = () => {
     riskLevel: "all",
   });
 
-  // Fetch real transaction data from API
-  const { data: transactionResponse } = useQuery({
-    queryKey: ["search-transactions"],
+  // Fetch real transaction data from API with filters applied
+  const { data: transactionResponse, isLoading, refetch } = useQuery({
+    queryKey: ["search-transactions", limit, filters.channel, filters.riskLevel],
     queryFn: async () => {
-      const response = await fetchTransactions(0, 500);
+      // Build API filters
+      const isFraud = filters.riskLevel === "all" ? undefined : 
+                      filters.riskLevel === "high" ? 1 : 
+                      filters.riskLevel === "low" ? 0 : undefined;
+      
+      // Map channel to API format (Mobile, Web, ATM, POS)
+      let channel: string | undefined;
+      if (filters.channel !== "all") {
+        channel = filters.channel.charAt(0).toUpperCase() + filters.channel.slice(1);
+        // Handle special cases
+        if (channel === "Atm") channel = "ATM";
+        if (channel === "Pos") channel = "POS";
+      }
+      
+      console.log('Fetching transactions with filters:', { limit, isFraud, channel });
+      const response = await fetchTransactions(0, limit, isFraud, channel);
+      console.log('Received transactions:', response.transactions?.length);
       return response;
     },
   });
 
   // Map API response to expected format with null safety
   const transactions: Transaction[] = (transactionResponse?.transactions || []).map((txn: any) => ({
-    transaction_id: txn.transaction_id || txn.customer_id || `TXN${Math.random().toString(36).substr(2, 9)}`,
+    transaction_id: txn.transaction_id || `TXN${Math.random().toString(36).substr(2, 9)}`,
     customer_id: txn.customer_id || "Unknown",
     amount: txn.amount ?? txn.transaction_amount ?? 0,
     merchant_name: txn.merchant_name || txn.merchant || "Unknown Merchant",
-    transaction_type: txn.transaction_type || txn.channel || "purchase",
-    transaction_time: txn.transaction_time || txn.timestamp || new Date().toISOString(),
+    transaction_type: txn.channel || txn.transaction_type || "Mobile",
+    transaction_time: txn.created_at || txn.timestamp || txn.transaction_time || new Date().toISOString(),
     location: txn.location || "Unknown",
-    device_type: (txn.device_type || txn.channel || "mobile").toLowerCase(),
-    risk_score: txn.risk_score ?? txn.fraud_probability ?? 0,
-    is_fraud: txn.is_fraud ?? (txn.risk_score > 0.7 || txn.fraud_probability > 0.7) ?? false,
+    device_type: txn.channel || txn.device_type || "Mobile",
+    risk_score: txn.fraud_probability ?? txn.risk_score ?? (txn.is_fraud === 1 ? 0.95 : 0.05),
+    is_fraud: txn.is_fraud === 1,
   }));
 
   const filteredTransactions = transactions?.filter((txn) => {
+    // Search across ALL columns
+    const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery ||
-      txn.transaction_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      txn.customer_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      txn.merchant_name.toLowerCase().includes(searchQuery.toLowerCase());
+      txn.transaction_id.toLowerCase().includes(searchLower) ||
+      txn.customer_id.toLowerCase().includes(searchLower) ||
+      txn.amount.toString().includes(searchLower) ||
+      txn.transaction_type.toLowerCase().includes(searchLower) ||
+      txn.device_type.toLowerCase().includes(searchLower) ||
+      txn.location.toLowerCase().includes(searchLower) ||
+      new Date(txn.transaction_time).toLocaleString().toLowerCase().includes(searchLower) ||
+      (txn.is_fraud ? "fraud" : "legitimate").includes(searchLower);
 
     const matchesAmount =
-      (!filters.minAmount || txn.amount >= parseFloat(filters.minAmount)) &&
-      (!filters.maxAmount || txn.amount <= parseFloat(filters.maxAmount));
+      (!filters.minAmount || filters.minAmount.trim() === "" || txn.amount >= parseFloat(filters.minAmount)) &&
+      (!filters.maxAmount || filters.maxAmount.trim() === "" || txn.amount <= parseFloat(filters.maxAmount));
 
-    const matchesChannel = filters.channel === "all" || txn.device_type === filters.channel;
+    // Date range filtering
+    let matchesDate = true;
+    if (filters.dateRange !== "all") {
+      const txnDate = new Date(txn.transaction_time);
+      const now = new Date();
+      
+      // Check if date is valid
+      if (!isNaN(txnDate.getTime())) {
+        const diffMs = now.getTime() - txnDate.getTime();
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+        
+        if (filters.dateRange === "today") {
+          // Check if same day
+          matchesDate = txnDate.getFullYear() === now.getFullYear() &&
+                        txnDate.getMonth() === now.getMonth() &&
+                        txnDate.getDate() === now.getDate();
+        } else if (filters.dateRange === "week") {
+          matchesDate = diffDays >= 0 && diffDays <= 7;
+        } else if (filters.dateRange === "month") {
+          matchesDate = diffDays >= 0 && diffDays <= 30;
+        } else if (filters.dateRange === "year") {
+          matchesDate = diffDays >= 0 && diffDays <= 365;
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
 
+    // Medium risk is client-side filter since API only supports fraud/legitimate
     const matchesRisk =
       filters.riskLevel === "all" ||
-      (filters.riskLevel === "high" && txn.risk_score >= 0.7) ||
-      (filters.riskLevel === "medium" && txn.risk_score >= 0.3 && txn.risk_score < 0.7) ||
-      (filters.riskLevel === "low" && txn.risk_score < 0.3);
+      filters.riskLevel === "medium" ||
+      (filters.riskLevel === "high" && txn.is_fraud) ||
+      (filters.riskLevel === "low" && !txn.is_fraud);
+    
+    // Apply medium risk filter on client side
+    const matchesMediumRisk = 
+      filters.riskLevel !== "medium" ||
+      (txn.risk_score >= 0.4 && txn.risk_score < 0.7);
 
-    return matchesSearch && matchesAmount && matchesChannel && matchesRisk;
+    return matchesSearch && matchesAmount && matchesDate && matchesRisk && matchesMediumRisk;
   });
 
   const handleExport = () => {
     if (!filteredTransactions) return;
 
     const csv = [
-      ["Transaction ID", "Customer ID", "Amount", "Merchant", "Type", "Time", "Location", "Device", "Risk Score", "Fraud"],
+      ["Transaction ID", "Customer ID", "Amount", "Type", "Time", "Location", "Device", "Risk Score", "Fraud"],
       ...filteredTransactions.map((txn) => [
         txn.transaction_id,
         txn.customer_id,
         (txn.amount ?? 0).toFixed(2),
-        txn.merchant_name,
         txn.transaction_type,
         txn.transaction_time,
         txn.location,
@@ -119,7 +174,7 @@ const TransactionSearch = () => {
 
   const getRiskColor = (score: number) => {
     if (score >= 0.7) return "text-red-600 bg-red-50";
-    if (score >= 0.3) return "text-yellow-600 bg-yellow-50";
+    if (score >= 0.4) return "text-yellow-600 bg-yellow-50";
     return "text-green-600 bg-green-50";
   };
 
@@ -145,12 +200,27 @@ const TransactionSearch = () => {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by transaction ID, customer ID, or merchant..."
+                    placeholder="Search by transaction ID, customer ID, amount, type, device, location, status..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Show:</span>
+                <Select value={limit.toString()} onValueChange={(value) => setLimit(parseInt(value))}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 transactions</SelectItem>
+                    <SelectItem value="100">100 transactions</SelectItem>
+                    <SelectItem value="500">500 transactions</SelectItem>
+                    <SelectItem value="1000">1000 transactions</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -219,7 +289,11 @@ const TransactionSearch = () => {
 
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
-                  Showing {filteredTransactions?.length || 0} of {transactions?.length || 0} transactions
+                  {isLoading ? (
+                    "Loading transactions..."
+                  ) : (
+                    <>Showing {filteredTransactions?.length || 0} of {transactions?.length || 0} transactions (limit: {limit})</>
+                  )}
                 </span>
                 <Button
                   variant="ghost"
@@ -254,10 +328,8 @@ const TransactionSearch = () => {
                     <TableHead>Transaction ID</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Merchant</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Time</TableHead>
-                    <TableHead>Device</TableHead>
                     <TableHead>Risk</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -272,10 +344,8 @@ const TransactionSearch = () => {
                       <TableCell className="font-mono text-sm">{txn.transaction_id}</TableCell>
                       <TableCell className="font-mono text-sm">{txn.customer_id}</TableCell>
                       <TableCell className="font-medium">₹{(txn.amount ?? 0).toLocaleString()}</TableCell>
-                      <TableCell>{txn.merchant_name}</TableCell>
                       <TableCell className="capitalize">{txn.transaction_type}</TableCell>
                       <TableCell className="text-sm">{new Date(txn.transaction_time).toLocaleString()}</TableCell>
-                      <TableCell className="capitalize">{txn.device_type}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className={getRiskColor(txn.risk_score ?? 0)}>
                           {((txn.risk_score ?? 0) * 100).toFixed(0)}%

@@ -60,9 +60,7 @@ export const TransactionsTable = ({
                 <TableHead>Transaction ID</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Channel</TableHead>
-                <TableHead>Location</TableHead>
                 <TableHead>Risk Score</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -75,9 +73,7 @@ export const TransactionsTable = ({
                   <TableCell className="font-semibold">
                     ₹{txn.amount.toLocaleString()}
                   </TableCell>
-                  <TableCell>{txn.type}</TableCell>
                   <TableCell>{txn.channel}</TableCell>
-                  <TableCell>{txn.location}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="w-16 bg-muted rounded-full h-2">

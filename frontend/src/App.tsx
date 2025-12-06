@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 import { ClerkProviderWithRoutes } from "@/providers/ClerkProvider";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { TransactionStoreProvider } from "@/context/TransactionStoreContext";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -16,14 +17,14 @@ import AlertsPage from "./pages/AlertsPage";
 import TransactionDetailsPage from "./pages/TransactionDetailsPage";
 import AnalyticsReports from "./pages/AnalyticsReports";
 import BatchPredictionPage from "./pages/BatchPrediction";
-import SimulationLab from "./pages/SimulationLab";
+import SimulationLab from "./pages/SimulationLabNew";
 import SignInPage from "./pages/SignIn";
 import SignUpPage from "./pages/SignUp";
 import ProfilePage from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import SettingsPage from "./pages/Settings";
 import MonitoringWall from "./pages/MonitoringWall";
-import CaseManagement from "./pages/CaseManagement";
+import CaseManagement from "./pages/CaseManagementNew";
 import ModelingWorkspace from "./pages/ModelingWorkspace";
 import TransactionSearch from "./pages/TransactionSearch";
 import Customer360 from "./pages/Customer360";
@@ -31,6 +32,7 @@ import AdminHealth from "./pages/AdminHealth";
 import ResultsHistory from "@/pages/ResultsHistory";
 import PerformanceDashboard from "@/pages/PerformanceDashboard";
 import UserTransaction from "@/pages/UserTransaction";
+import TransIntelliFlowDashboard from "./pages/TransIntelliFlowDashboard";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +72,7 @@ const AppRoutes = () => (
     <Route path="/admin" element={<ProtectedPage><AdminHealth /></ProtectedPage>} />
     <Route path="/results-history" element={<ProtectedPage><ResultsHistory /></ProtectedPage>} />
     <Route path="/performance" element={<ProtectedPage><PerformanceDashboard /></ProtectedPage>} />
+    <Route path="/transintelliflow" element={<ProtectedPage><TransIntelliFlowDashboard /></ProtectedPage>} />
     <Route path="/profile/*" element={<ProtectedPage><ProfilePage /></ProtectedPage>} />
 
     {/* Catch all */}
@@ -80,15 +83,17 @@ const AppRoutes = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ClerkProviderWithRoutes>
-            <AppRoutes />
-          </ClerkProviderWithRoutes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <TransactionStoreProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ClerkProviderWithRoutes>
+              <AppRoutes />
+            </ClerkProviderWithRoutes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </TransactionStoreProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

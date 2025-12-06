@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { predictFraud, PredictionRequest, PredictionResponse } from "@/services/api";
+import { predictFraud, PredictionRequest, PredictionResponse, storeSimulationTransactionsBatch, SimulationTransaction } from "@/services/api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { Activity, RefreshCw, BarChart } from "lucide-react";
+import { Activity, RefreshCw, BarChart, Database } from "lucide-react";
 import { toast } from "sonner";
 import {
   ResponsiveContainer,
@@ -58,36 +58,81 @@ const buildRandomTransaction = (index: number, batchSize: number, runTimestamp: 
   
   // Calculate target fraud count (9-15% of batch size)
   const targetFraudCount = Math.floor(batchSize * targetFraudRate);
-  const progressRatio = totalCount / batchSize;
-  const shouldBeFraud = fraudCount < targetFraudCount && (fraudCount / Math.max(totalCount, 1)) < (targetFraudCount / batchSize) * 1.2;
+  const remainingTxns = batchSize - totalCount + 1;
+  const remainingFraudsNeeded = targetFraudCount - fraudCount;
+  
+  // Ensure we hit target by making remaining transactions fraud if needed
+  const mustBeFraud = remainingFraudsNeeded >= remainingTxns;
+  const shouldBeFraud = mustBeFraud || (fraudCount < targetFraudCount && Math.random() < (remainingFraudsNeeded / remainingTxns) * 1.5);
   
   // Unique transaction ID with timestamp to avoid duplicates
   const uniqueId = `SIM${runTimestamp}_${String(index + 1).padStart(4, "0")}`;
   
-  const deviceTimestamp = new Date().toISOString();
+  // Use current date and random hour for realistic timestamps
+  const now = new Date();
+  const randomHour = Math.floor(Math.random() * 24);
+  const randomMinute = Math.floor(Math.random() * 60);
+  const randomSecond = Math.floor(Math.random() * 60);
+  now.setHours(randomHour, randomMinute, randomSecond);
+  const deviceTimestamp = now.toISOString();
 
-  // Create intentionally fraudulent transaction with higher probability
-  if (shouldBeFraud && (Math.random() > 0.2 || fraudCount < targetFraudCount * progressRatio)) {
+  // Create EXTREME high-risk fraudulent transaction that model WILL detect as fraud (>70% probability)
+  if (shouldBeFraud) {
     fraudCount++;
+    // Combine MULTIPLE red flags to trigger fraud detection:
+    // 1. VERY high amount (way above threshold)
+    // 2. Brand NEW account (1-5 days only)
+    // 3. Late night hours (midnight to 4am)
+    // 4. NO KYC verification
+    // 5. ATM channel (physical vulnerability)
+    const fraudPatterns = [
+      {
+        // Pattern 1: Massive withdrawal from new account at 2am
+        account_age_days: Math.floor(Math.random() * 3) + 1, // 1-3 days old
+        amount: Math.floor(Math.random() * 150000 + 100000), // ₹100k-250k (VERY high)
+        channel: "ATM",
+        kyc_verified: "No",
+        hour: [0, 1, 2, 3][Math.floor(Math.random() * 4)],
+      },
+      {
+        // Pattern 2: Large web transfer from unverified new account
+        account_age_days: Math.floor(Math.random() * 2) + 1, // 1-2 days old
+        amount: Math.floor(Math.random() * 120000 + 80000), // ₹80k-200k
+        channel: "Web",
+        kyc_verified: "No",
+        hour: [23, 0, 1, 2][Math.floor(Math.random() * 4)],
+      },
+      {
+        // Pattern 3: Multiple high-value ATM transactions
+        account_age_days: Math.floor(Math.random() * 5) + 1, // 1-5 days old
+        amount: Math.floor(Math.random() * 100000 + 75000), // ₹75k-175k
+        channel: "ATM",
+        kyc_verified: "No",
+        hour: [1, 2, 3, 4][Math.floor(Math.random() * 4)],
+      }
+    ];
+    
+    const pattern = fraudPatterns[Math.floor(Math.random() * fraudPatterns.length)];
+    
     return {
       customer_id: uniqueId,
-      account_age_days: Math.floor(Math.random() * 25) + 1, // Very new account 1-25 days
-      amount: Math.floor(Math.random() * 40000 + 12000), // High amount ₹12k-52k
-      channel: Math.random() > 0.6 ? "ATM" : "Web",
-      kyc_verified: "No", // Not verified
-      hour: [0, 1, 2, 3, 22, 23][Math.floor(Math.random() * 6)], // Late night/early morning
+      account_age_days: pattern.account_age_days,
+      amount: pattern.amount,
+      channel: pattern.channel,
+      kyc_verified: pattern.kyc_verified,
+      hour: pattern.hour,
       timestamp: deviceTimestamp,
     };
   }
   
-  // Normal transaction
+  // Normal legitimate transaction pattern
   return {
     customer_id: uniqueId,
-    account_age_days: Math.floor(Math.random() * 800) + 200,
-    amount: Math.floor(Math.random() * 4500 + 150),
+    account_age_days: Math.floor(Math.random() * 800) + 200, // Established account 200-1000 days
+    amount: Math.floor(Math.random() * 8000 + 500), // Normal amount ₹500-8500
     channel: CHANNELS[Math.floor(Math.random() * CHANNELS.length)],
-    kyc_verified: "Yes",
-    hour: Math.floor(Math.random() * 10) + 9, // Business hours 9-18
+    kyc_verified: "Yes", // KYC verified
+    hour: Math.floor(Math.random() * 8) + 9, // Business hours 9-17
     timestamp: deviceTimestamp,
   };
 };
@@ -98,6 +143,8 @@ const SimulationLab = () => {
   const [records, setRecords] = useState<SimulationRecord[]>([]);
   const [progress, setProgress] = useState(0);
   const [running, setRunning] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const completedRecords = useMemo(() => records.filter((record) => record.status !== "pending"), [records]);
 
@@ -186,7 +233,43 @@ const SimulationLab = () => {
     }
 
     setRunning(false);
+    setSaved(false); // Reset saved state for new simulation
     toast.success("Simulation complete");
+  };
+
+  const saveToMongoDB = async () => {
+    if (completedRecords.length === 0) {
+      toast.error("No simulation results to save");
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const transactions: SimulationTransaction[] = completedRecords
+        .filter((record) => record.status === "success" && record.prediction)
+        .map((record) => ({
+          transaction_id: record.id,
+          customer_id: record.payload.customer_id,
+          transaction_amount: record.payload.amount,
+          channel: record.payload.channel,
+          timestamp: record.payload.timestamp || new Date().toISOString(),
+          is_fraud: record.prediction?.prediction === "Fraud" ? 1 : 0,
+          fraud_probability: record.prediction?.risk_score ?? record.prediction?.fraud_probability ?? 0,
+          risk_level: record.prediction?.risk_level || "Low",
+          source: "simulation",
+          account_age_days: record.payload.account_age_days,
+          kyc_verified: record.payload.kyc_verified,
+          hour: record.payload.hour,
+        }));
+      
+      const result = await storeSimulationTransactionsBatch(transactions);
+      toast.success(`Saved ${result.stored_count} transactions to MongoDB`);
+      setSaved(true);
+    } catch (error: any) {
+      toast.error(`Failed to save: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const riskSeries = useMemo(() => {
@@ -207,10 +290,21 @@ const SimulationLab = () => {
       title="Simulation Lab"
       subtitle="Stress-test the model with synthetic traffic"
       actions={
-        <Button size="sm" onClick={runSimulation} disabled={running}>
-          <Activity className="mr-2 h-4 w-4" />
-          {running ? "Running" : "Start Simulation"}
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={runSimulation} disabled={running}>
+            <Activity className="mr-2 h-4 w-4" />
+            {running ? "Running" : "Start Simulation"}
+          </Button>
+          <Button 
+            size="sm" 
+            variant={saved ? "default" : "outline"}
+            onClick={saveToMongoDB} 
+            disabled={saving || completedRecords.length === 0 || running}
+          >
+            <Database className="mr-2 h-4 w-4" />
+            {saving ? "Saving..." : saved ? "Saved ✓" : "Save to MongoDB"}
+          </Button>
+        </div>
       }
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

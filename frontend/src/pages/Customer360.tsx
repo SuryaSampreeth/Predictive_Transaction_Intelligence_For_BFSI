@@ -149,7 +149,7 @@ const Customer360 = () => {
             <CardTitle>Customer List</CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-[calc(100vh-250px)]">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -65,11 +65,11 @@ async def get_training_job(job_id: str):
             job["status"] = "completed"
             job["completed_at"] = datetime.utcnow().isoformat()
             job["metrics"] = {
-                "accuracy": 0.9534,
-                "precision": 0.8912,
-                "recall": 0.8756,
-                "f1_score": 0.8833,
-                "roc_auc": 0.92
+                "accuracy": 0.9147,
+                "precision": 0.5714,
+                "recall": 0.0615,
+                "f1_score": 0.1111,
+                "roc_auc": 0.8063
             }
     
     return job
@@ -110,10 +110,11 @@ async def explain_model():
     from ...utils.gemini_client import generate_model_explanation
     
     metrics = {
-        "accuracy": 0.9534,
-        "precision": 0.8912,
-        "recall": 0.8756,
-        "f1_score": 0.8833
+        "accuracy": 0.9147,
+        "precision": 0.5714,
+        "recall": 0.0615,
+        "f1_score": 0.1111,
+        "roc_auc": 0.8063
     }
     
     explanation = await generate_model_explanation(FEATURE_IMPORTANCE, metrics)

@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { fetchCases, createCase, fetchCase, updateCase, fetchCaseRecommendations, Case } from "@/services/api";
-import { Plus, FolderOpen, AlertTriangle, CheckCircle, Clock, Sparkles } from "lucide-react";
+import { fetchCases, createCase, fetchCase, updateCase, fetchCaseRecommendations, Case, updateTransactionsBatch, submitFeedback } from "@/services/api";
+import { Plus, FolderOpen, AlertTriangle, CheckCircle, Clock, Sparkles, RefreshCw, Database } from "lucide-react";
 
 const CaseManagement = () => {
   const queryClient = useQueryClient();
@@ -56,6 +56,9 @@ const CaseManagement = () => {
     },
   });
 
+  const [updatingTransactions, setUpdatingTransactions] = useState(false);
+  const [transactionsUpdated, setTransactionsUpdated] = useState(false);
+
   const cases = casesQuery.data?.cases || [];
   const caseDetail = caseDetailQuery.data;
   const recommendations = recommendationsQuery.data;
@@ -77,6 +80,47 @@ const CaseManagement = () => {
   const handleUpdateStatus = (status: string) => {
     if (selectedCase) {
       updateCaseMutation.mutate({ caseId: selectedCase, update: { status } });
+    }
+  };
+
+  // Feedback loop: Update transactions based on case resolution
+  const handleUpdateTransactions = async (confirmedFraud: boolean) => {
+    if (!caseDetail || caseDetail.transaction_ids.length === 0) {
+      toast.error("No transactions to update");
+      return;
+    }
+
+    setUpdatingTransactions(true);
+    try {
+      // Update transactions with verified fraud status
+      await updateTransactionsBatch(caseDetail.transaction_ids, {
+        is_fraud: confirmedFraud ? 1 : 0,
+        verified: true,
+        verified_by: "case_management",
+        notes: `Case ${caseDetail.case_id}: ${confirmedFraud ? "Confirmed Fraud" : "False Positive"}`,
+      });
+
+      // Also submit feedback for each transaction for model retraining
+      for (const txnId of caseDetail.transaction_ids) {
+        await submitFeedback({
+          transaction_id: txnId,
+          prediction: confirmedFraud ? "Fraud" : "Legitimate",
+          is_correct: true,
+          user_id: "case_management",
+          notes: `Verified via case ${caseDetail.case_id}`,
+          actual_label: confirmedFraud ? "Fraud" : "Legitimate",
+        });
+      }
+
+      toast.success(`Updated ${caseDetail.transaction_ids.length} transactions as ${confirmedFraud ? "Fraud" : "Legitimate"}`);
+      setTransactionsUpdated(true);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    } catch (error: any) {
+      toast.error(`Failed to update transactions: ${error.message}`);
+    } finally {
+      setUpdatingTransactions(false);
     }
   };
 
@@ -275,6 +319,37 @@ const CaseManagement = () => {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Feedback Loop - Update Transactions Section */}
+                  {caseDetail.status === "resolved" && (
+                    <div className="border-t pt-4">
+                      <Label className="text-muted-foreground">Feedback Loop - Update Transactions</Label>
+                      <p className="text-sm text-muted-foreground mt-1 mb-3">
+                        Update the fraud status of {caseDetail.transaction_ids.length} transaction(s) based on investigation results.
+                        This data will be used to improve model accuracy.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleUpdateTransactions(true)}
+                          disabled={updatingTransactions || transactionsUpdated}
+                        >
+                          <Database className="mr-2 h-4 w-4" />
+                          {updatingTransactions ? "Updating..." : transactionsUpdated ? "Updated ✓" : "Confirm as Fraud"}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleUpdateTransactions(false)}
+                          disabled={updatingTransactions || transactionsUpdated}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          {transactionsUpdated ? "Updated ✓" : "Mark as Legitimate (False Positive)"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="transactions" className="space-y-4">

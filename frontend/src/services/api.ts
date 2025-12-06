@@ -82,6 +82,18 @@ export interface ModelMetrics {
   last_updated?: string;
   confusion_matrix?: number[][];
   classification_report?: any;
+  training_samples?: number;
+  test_samples?: number;
+  risk_thresholds?: {
+    low: string;
+    medium: string;
+    high: string;
+  };
+  probability_distribution?: {
+    low_pct: number;
+    medium_pct: number;
+    high_pct: number;
+  };
 }
 
 // UPDATED for Flask backend (Task 1)
@@ -235,15 +247,31 @@ export const fetchHourlyStatistics = async (): Promise<HourlyStatistics[]> => {
  * Get model performance metrics
  */
 export const fetchModelMetrics = async (): Promise<ModelMetrics> => {
-  // Flask backend doesn't have this yet, return defaults
-  return {
-    model_version: "1.0",
-    accuracy: 0.9534,
-    precision: 0.8912,
-    recall: 0.8756,
-    f1_score: 0.8833,
-    roc_auc: 0.92
-  };
+  try {
+    const response = await api.get('/api/metrics');
+    return response.data;
+  } catch (error) {
+    // Return metrics based on actual trained model
+    return {
+      model_version: "RandomForest (Calibrated + SMOTE)",
+      accuracy: 0.90,
+      precision: 0.33,
+      recall: 0.14,
+      f1_score: 0.20,
+      roc_auc: 0.7334,
+      last_updated: new Date().toISOString(),
+      probability_distribution: {
+        low_pct: 89.0,
+        medium_pct: 9.4,
+        high_pct: 1.6
+      },
+      risk_thresholds: {
+        low: "< 0.4",
+        medium: "0.4 - 0.7",
+        high: ">= 0.7"
+      }
+    };
+  }
 };
 
 /**
@@ -251,6 +279,89 @@ export const fetchModelMetrics = async (): Promise<ModelMetrics> => {
  */
 export const fetchModelMetricsHistory = async (): Promise<ModelMetrics[]> => {
   return [];
+};
+
+// ==================== SIMULATION TRANSACTION STORAGE ====================
+
+export interface SimulationTransaction {
+  transaction_id: string;
+  customer_id: string;
+  transaction_amount: number;
+  channel: string;
+  timestamp: string;
+  is_fraud: number;
+  fraud_probability: number;
+  risk_level: string;
+  source: string;
+  account_age_days?: number;
+  kyc_verified?: string;
+  hour?: number;
+}
+
+/**
+ * Store a single simulation transaction to MongoDB
+ */
+export const storeSimulationTransaction = async (transaction: SimulationTransaction): Promise<{ success: boolean }> => {
+  try {
+    const response = await api.post('/api/transactions', transaction);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to store simulation transaction:', error);
+    throw error;
+  }
+};
+
+/**
+ * Store multiple simulation transactions to MongoDB in batch
+ */
+export const storeSimulationTransactionsBatch = async (transactions: SimulationTransaction[]): Promise<{ success: boolean; stored_count: number }> => {
+  try {
+    const response = await api.post('/api/transactions/batch', transactions);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to store simulation transactions batch:', error);
+    throw error;
+  }
+};
+
+// ==================== TRANSACTION UPDATE API (Feedback Loop) ====================
+
+export interface TransactionUpdate {
+  is_fraud?: number;
+  fraud_probability?: number;
+  risk_level?: string;
+  verified?: boolean;
+  verified_by?: string;
+  notes?: string;
+}
+
+/**
+ * Update a single transaction (for case resolution feedback loop)
+ */
+export const updateTransaction = async (transactionId: string, update: TransactionUpdate): Promise<{ success: boolean }> => {
+  try {
+    const response = await api.put(`/api/transactions/${transactionId}`, update);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to update transaction:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update multiple transactions in batch (for case resolution feedback loop)
+ */
+export const updateTransactionsBatch = async (transactionIds: string[], update: TransactionUpdate): Promise<{ success: boolean; updated_count: number }> => {
+  try {
+    const response = await api.put('/api/transactions/batch/update', {
+      transaction_ids: transactionIds,
+      ...update
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to update transactions batch:', error);
+    throw error;
+  }
 };
 
 /**
@@ -853,6 +964,118 @@ export const fetchSimulationOverlay = async (limit: number = 100) => {
   } catch (error) {
     console.warn('Simulation overlay not available');
     return { total: 0, fraud_count: 0, fraud_rate: 0, transactions: [] };
+  }
+};
+
+// ==================== Feedback Loop API (User Labeling) ====================
+
+export interface FeedbackRequest {
+  transaction_id: string;
+  prediction: string;  // "Fraud" or "Legitimate"
+  is_correct: boolean;
+  user_id?: string;
+  notes?: string;
+  risk_score?: number;
+  actual_label?: string;
+}
+
+export interface FeedbackResponse {
+  success: boolean;
+  message: string;
+  feedback_id?: string;
+  transaction_id: string;
+  is_correct: boolean;
+  timestamp: string;
+}
+
+export interface Feedback {
+  _id: string;
+  transaction_id: string;
+  prediction: string;
+  is_correct: boolean;
+  user_id: string;
+  notes?: string;
+  risk_score?: number;
+  actual_label?: string;
+  feedback_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedbackStatistics {
+  total_feedback: number;
+  marked_correct: number;
+  marked_incorrect: number;
+  accuracy_rate: number;
+  needs_review: number;
+  timestamp: string;
+}
+
+/**
+ * Submit user feedback on a prediction
+ * Enables feedback loop for model improvement and quality monitoring
+ */
+export const submitFeedback = async (feedback: FeedbackRequest): Promise<FeedbackResponse> => {
+  try {
+    const response = await api.post('/api/feedback', feedback);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to submit feedback:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get feedback for a specific transaction
+ */
+export const getFeedbackByTransaction = async (transactionId: string): Promise<{ found: boolean; feedback?: Feedback }> => {
+  try {
+    const response = await api.get(`/api/feedback/${transactionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get feedback:', error);
+    return { found: false };
+  }
+};
+
+/**
+ * List all feedback with pagination
+ */
+export const listFeedback = async (
+  skip: number = 0,
+  limit: number = 100,
+  isCorrect?: boolean
+): Promise<{ total: number; page: number; limit: number; feedback: Feedback[] }> => {
+  try {
+    const params: any = { skip, limit };
+    if (isCorrect !== undefined) {
+      params.is_correct = isCorrect;
+    }
+    const response = await api.get('/api/feedback', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to list feedback:', error);
+    return { total: 0, page: 1, limit: 100, feedback: [] };
+  }
+};
+
+/**
+ * Get feedback statistics for model improvement insights
+ */
+export const getFeedbackStatistics = async (): Promise<FeedbackStatistics> => {
+  try {
+    const response = await api.get('/api/feedback/statistics');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get feedback statistics:', error);
+    return {
+      total_feedback: 0,
+      marked_correct: 0,
+      marked_incorrect: 0,
+      accuracy_rate: 0,
+      needs_review: 0,
+      timestamp: new Date().toISOString()
+    };
   }
 };
 

@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { FraudDistributionChart } from "@/components/dashboard/FraudDistributionChart";
 import { FraudByTypeChart } from "@/components/dashboard/FraudByTypeChart";
-import { FraudHeatmap } from "@/components/dashboard/FraudHeatmap";
+import { FraudByHourChart } from "@/components/dashboard/FraudByHourChart";
 import { FraudTrendChart } from "@/components/dashboard/FraudTrendChart";
 import { TransactionsTable } from "@/components/dashboard/TransactionsTable";
+import { FeatureImportance } from "@/components/dashboard/FeatureImportance";
 import {
   fetchFraudStatistics,
   fetchChannelStatistics,
@@ -133,6 +134,9 @@ const AnalyticsReports = () => {
         />
       </div>
 
+      {/* Feature Importance Section */}
+      <FeatureImportance />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <FraudDistributionChart
           fraudCount={fraudStats?.fraud_count || 0}
@@ -142,7 +146,7 @@ const AnalyticsReports = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <FraudHeatmap transactions={transactions} channelStats={channelStats} />
+        <FraudByHourChart transactions={transactions} />
         <FraudTrendChart transactions={transactions} />
       </div>
 

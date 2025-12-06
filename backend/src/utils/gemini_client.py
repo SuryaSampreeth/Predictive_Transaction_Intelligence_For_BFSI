@@ -129,19 +129,44 @@ async def generate_model_explanation(
         
         top_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:5]
         
-        prompt = f"""Explain this fraud detection model's behavior to a business stakeholder:
+        prompt = f"""Explain the key factors in fraud detection to business stakeholders. Be direct and professional. DO NOT include greetings or closings.
 
-Model Performance:
-- Accuracy: {metrics.get('accuracy', 0)*100:.1f}%
-- Precision: {metrics.get('precision', 0)*100:.1f}%
-- Recall: {metrics.get('recall', 0)*100:.1f}%
+Top 5 Most Important Features:
+{chr(10).join(f"{i+1}. {feat}: {imp*100:.1f}%" for i, (feat, imp) in enumerate(top_features))}
 
-Top 5 Important Features:
-{chr(10).join(f"- {feat}: {imp:.3f}" for feat, imp in top_features)}
+Write TWO sections using this EXACT format:
 
-Provide a 3-4 sentence explanation in business terms about what drives fraud detection."""
+**Feature Importance Analysis:**
+
+Write 2-3 clear sentences explaining what these features mean and why they matter for fraud detection:
+- Transaction Amount: Why transaction size is the #1 indicator
+- Account Age: Why newer accounts are higher risk
+- High Value Flag: Why large transactions need extra scrutiny
+- Transaction Hour: Why timing patterns matter
+- Channel types: Why certain payment methods are riskier
+
+Be specific and business-focused. Avoid flowery language.
+
+---
+
+**What Drives Fraud Detection:**
+
+Write 2-3 sentences explaining how the model combines these features to catch fraud. Focus on:
+- Pattern recognition across multiple signals
+- How unusual combinations create red flags
+- Real examples (e.g., "new account + large amount + late night = high risk")
+
+Keep it concrete and actionable. No greetings, no sign-offs, just the analysis."""
 
         response = model.generate_content(prompt)
-        return response.text
+        # Clean up any unwanted formatting
+        text = response.text.strip()
+        # Remove common unwanted phrases
+        text = text.replace("Good morning team,", "")
+        text = text.replace("Good afternoon team,", "")
+        text = text.replace("Hello team,", "")
+        text = text.replace("Hi team,", "")
+        text = text.split("---")[0] if "---" in text and text.index("---") < 100 else text
+        return text.strip()
     except Exception as e:
         return f"Model explanation unavailable: {str(e)}"

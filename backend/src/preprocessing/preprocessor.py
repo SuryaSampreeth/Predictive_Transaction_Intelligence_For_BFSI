@@ -21,7 +21,13 @@ class FraudPreprocessor:
             'kyc_verified_Yes'
         ]
 
-        self.channel_values = ["Atm", "Mobile", "Pos", "Web"]
+        # Channel mapping: normalized name -> feature suffix
+        self.channel_mapping = {
+            "atm": "Atm",
+            "mobile": "Mobile",
+            "pos": "Pos",
+            "web": "Web"
+        }
         self.kyc_values = ["No", "Yes"]
 
     def transform(self, input_dict):
@@ -42,17 +48,20 @@ class FraudPreprocessor:
         df["month"] = df["timestamp"].dt.month
 
         # --- VALUE FEATURES ---
-        df["is_high_value"] = (df["transaction_amount"] > 10000).astype(int)
+        # High value threshold is 50000 to match training data
+        df["is_high_value"] = (df["transaction_amount"] > 50000).astype(int)
 
         df["transaction_amount_log"] = np.log1p(df["transaction_amount"])
 
-        # --- ONE HOT ENCODING: channel ---
-        for val in self.channel_values:
-            df[f"channel_{val}"] = (df["channel"] == val).astype(int)
+        # --- ONE HOT ENCODING: channel (case-insensitive) ---
+        channel_lower = str(df["channel"].iloc[0]).lower().strip()
+        for key, suffix in self.channel_mapping.items():
+            df[f"channel_{suffix}"] = int(channel_lower == key)
 
-        # --- ONE HOT ENCODING: KYC ---
+        # --- ONE HOT ENCODING: KYC (case-insensitive) ---
+        kyc_lower = str(df["kyc_verified"].iloc[0]).lower().strip()
         for val in self.kyc_values:
-            df[f"kyc_verified_{val}"] = (df["kyc_verified"] == val).astype(int)
+            df[f"kyc_verified_{val}"] = int(kyc_lower == val.lower())
 
         # --- SELECT EXACT MODEL FEATURES IN CORRECT ORDER ---
         df_final = df[self.final_features]

@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Activity } from "lucide-react";
 
 interface ModelPerformanceProps {
   accuracy: number;
   precision: number;
   recall: number;
   f1Score: number;
+  rocAuc?: number;
 }
 
 export const ModelPerformance = ({
@@ -14,6 +15,7 @@ export const ModelPerformance = ({
   precision,
   recall,
   f1Score,
+  rocAuc = 0.7334,
 }: ModelPerformanceProps) => {
   const metrics = [
     { label: "Accuracy", value: accuracy },
@@ -29,11 +31,23 @@ export const ModelPerformance = ({
           <CardTitle>Model Performance</CardTitle>
           <Badge className="bg-success text-success-foreground">
             <TrendingUp className="h-3 w-3 mr-1" />
-            Optimized
+            SMOTE Balanced
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+        {/* ROC-AUC Score */}
+        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            <span className="font-medium">ROC-AUC Score</span>
+          </div>
+          <span className="text-xl font-bold text-primary">{(rocAuc * 100).toFixed(2)}%</span>
+        </div>
+
+        {/* Removed Risk Level Distribution per product request */}
+
+        {/* Performance Metrics */}
         <div className="grid grid-cols-2 gap-4">
           {metrics.map((metric) => (
             <div key={metric.label} className="space-y-2">
