@@ -50,7 +50,7 @@ Provide a concise 2-3 sentence explanation for an analyst, focusing on key risk 
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"AI explanation unavailable: {str(e)}"
+        return "LLM explanation is temporarily unavailable. Please use the rule-based reason shown above."
 
 async def generate_case_recommendations(
     case_data: Dict[str, Any]

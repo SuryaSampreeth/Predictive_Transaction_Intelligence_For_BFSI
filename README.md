@@ -22,17 +22,6 @@
 
 ---
 
-### 🎯 Key Capabilities
-- **Real-time Fraud Detection** - Instant analysis of transactions via FastAPI
-- **ML-Powered Predictions** - XGBoost & Random Forest models with cached mock fallback
-- **Simulation Lab & Overlay** - Run 100+ what-if transactions and overlay the latest 500 results on the dashboard without breaking baselines
-- **AI Explainability** - Gemini-powered narratives that summarize feature importance and per-transaction risk factors
-- **Risk Scoring Engine** - Multi-factor risk assessment with heuristic boosters for demo realism
-- **Interactive Dashboard** - React-based monitoring interface tuned for enterprise presentations
-- **RESTful API** - Easily integrate with existing systems or experimentation notebooks
-
----
-
 ## 🏗️ Architecture
 
 ```
