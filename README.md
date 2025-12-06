@@ -20,6 +20,47 @@
 
 **TransIntelliFlow** is an enterprise-grade fraud detection system that combines Machine Learning, AI-assisted explainability, and realistic simulations to identify fraudulent transactions in real-time for the Banking, Financial Services, and Insurance (BFSI) sector.
 
+---
+
+## 📊 Project Modules
+
+| Module | Timeline | Status | Description |
+|--------|----------|--------|-------------|
+| **Module 1** | Weeks 1-2 | ✅ Complete | Data Collection & Preprocessing |
+| **Module 2** | Weeks 3-4 | ✅ Complete | Predictive Transaction Modeling |
+| **Module 3** | Weeks 5-6 | ✅ Complete | Real-Time Fraud Detection Engine |
+| **Module 4** | Weeks 7-8 | ✅ Complete | Deployment & Integration |
+
+### Module Details
+
+#### Module 1: Data Collection & Preprocessing ✅
+- Data cleaning and transformation pipeline
+- Feature engineering and selection
+- Exploratory Data Analysis (EDA)
+- Data validation and quality checks
+
+#### Module 2: Predictive Transaction Modeling ✅
+- ML model training (XGBoost, Random Forest)
+- Hyperparameter tuning
+- Model evaluation and comparison
+- Feature importance analysis
+
+#### Module 3: Real-Time Fraud Detection Engine ✅
+- FastAPI-based detection system
+- Real-time transaction analysis
+- Risk scoring engine
+- Alert generation system
+- Email notification simulation
+
+#### Module 4: Deployment & Integration ✅
+- React dashboard deployment
+- API integration
+- MongoDB database setup
+- Gemini AI integration
+- Production-ready configuration
+
+---
+
 ### 🎯 Key Capabilities
 - **Real-time Fraud Detection** - Instant analysis of transactions via FastAPI
 - **ML-Powered Predictions** - XGBoost & Random Forest models with cached mock fallback
