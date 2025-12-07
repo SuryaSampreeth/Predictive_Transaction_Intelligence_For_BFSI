@@ -28,10 +28,13 @@ from ..detection import get_fraud_engine, initialize_fraud_engine
 
 app = FastAPI(title="Fraud Detection API - TransIntelliFlow", version="1.0")
 
-# CORS Configuration
+# CORS Configuration - Read from environment variable
+cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:8080,http://localhost:8081,http://localhost:5173,http://localhost:3000")
+cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:8081", "http://localhost:5173", "http://localhost:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
