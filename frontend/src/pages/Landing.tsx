@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { useAuthorizedUser } from "@/hooks/useAuthorizedUser";
 import {
   Shield,
   TrendingUp,
@@ -15,6 +16,8 @@ import {
 import { Link } from "react-router-dom";
 
 const Landing = () => {
+  const { isAuthorized } = useAuthorizedUser();
+
   const features = [
     {
       icon: Shield,
@@ -81,9 +84,11 @@ const Landing = () => {
               </Link>
             </SignedOut>
             <SignedIn>
-              <Link to="/dashboard">
-                <Button variant="outline" size="sm">Dashboard</Button>
-              </Link>
+              {isAuthorized && (
+                <Link to="/dashboard">
+                  <Button variant="outline" size="sm">Dashboard</Button>
+                </Link>
+              )}
               <UserButton
                 afterSignOutUrl="/"
                 appearance={{
@@ -148,12 +153,14 @@ const Landing = () => {
                 </Button>
               </SignedOut>
               <SignedIn>
-                <Button size="lg" asChild className="text-base sm:text-lg h-11 sm:h-12 px-6 sm:px-8 w-full sm:w-auto">
-                  <Link to="/dashboard">
-                    Go to Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  </Link>
-                </Button>
+                {isAuthorized && (
+                  <Button size="lg" asChild className="text-base sm:text-lg h-11 sm:h-12 px-6 sm:px-8 w-full sm:w-auto">
+                    <Link to="/dashboard">
+                      Go to Dashboard
+                      <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    </Link>
+                  </Button>
+                )}
               </SignedIn>
               <Button size="lg" variant="outline" asChild className="text-base sm:text-lg h-11 sm:h-12 px-6 sm:px-8 w-full sm:w-auto">
                 <Link to="/predict">
@@ -273,17 +280,19 @@ const Landing = () => {
                 platform today.
               </p>
               <div className="pt-2 sm:pt-4 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  asChild
-                  className="text-base sm:text-lg h-11 sm:h-12 px-6 sm:px-8 w-full sm:w-auto"
-                >
-                  <Link to="/login">
-                    View Live Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  </Link>
-                </Button>
+                {isAuthorized && (
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    asChild
+                    className="text-base sm:text-lg h-11 sm:h-12 px-6 sm:px-8 w-full sm:w-auto"
+                  >
+                    <Link to="/dashboard">
+                      View Live Dashboard
+                      <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    </Link>
+                  </Button>
+                )}
                 <Button
                   size="lg"
                   variant="outline"
@@ -317,7 +326,7 @@ const Landing = () => {
             <div>
               <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Product</h3>
               <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
-                <li><Link to="/login" className="hover:text-primary transition-colors">Dashboard</Link></li>
+                {isAuthorized && <li><Link to="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>}
                 <li><Link to="/predict" className="hover:text-primary transition-colors">Fraud Prediction</Link></li>
                 <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
                 <li><a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">API Docs</a></li>
