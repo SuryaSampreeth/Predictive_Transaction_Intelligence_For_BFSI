@@ -1,0 +1,37 @@
+# Exclude backend from Vercel deployment
+backend/
+api/
+Aman-Backend/
+
+# Exclude data files
+data/
+models/
+*.csv
+*.pkl
+*.db
+*.sqlite
+
+# Exclude documentation
+Agile Docs/
+docs/
+*.md
+!frontend/README.md
+
+# Exclude environment files
+.env*
+!frontend/.env.example
+!frontend/.env.production.example
+
+# Exclude Python
+*.py
+__pycache__/
+*.pyc
+venv/
+myenv/
+
+# Exclude other project files
+.git/
+.vscode/
+.idea/
+node_modules/
+!frontend/node_modules/
