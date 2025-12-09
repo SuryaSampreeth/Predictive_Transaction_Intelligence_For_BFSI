@@ -14,4 +14,4 @@ restartPolicyMaxRetries = 5
 [variables]
 PYTHONPATH = "/app"
 PYTHONUNBUFFERED = "1"
-PORT = "8000"
+# PORT is dynamically assigned by Railway - don't override it

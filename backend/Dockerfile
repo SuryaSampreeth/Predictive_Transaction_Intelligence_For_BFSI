@@ -24,20 +24,20 @@ COPY outputs/all_models/*.pkl ./outputs/all_models/
 COPY outputs/all_models/*.json ./outputs/all_models/
 COPY outputs/all_models/*.txt ./outputs/all_models/
 
+# Copy preprocessor
+COPY src/preprocessing/preprocessor.pkl ./src/preprocessing/
+
 # Verify model files are copied
-RUN echo "=== Model files in container ===" && ls -la outputs/all_models/ && echo "=== Preprocessor ===" && ls -la src/preprocessing/*.pkl
+RUN echo "=== Model files in container ===" && ls -la outputs/all_models/ && echo "=== Preprocessor ===" && ls -la src/preprocessing/
 
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
 
-# Expose port
-EXPOSE 8000
+# Expose port (Railway will inject the actual PORT)
+EXPOSE 8080
 
-# Health check using curl (more reliable)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# No HEALTHCHECK - let Railway handle health checks via healthcheckPath in railway.toml
 
-# Start command - use shell form to expand $PORT
-CMD sh -c "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --log-level info"
+# Start command - use shell form to expand $PORT (Railway injects this)
+CMD sh -c "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8080} --log-level info"
