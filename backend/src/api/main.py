@@ -46,13 +46,9 @@ async def root():
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:8080,http://localhost:8081,http://localhost:5173,http://localhost:3000")
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
 
-# Add all Vercel domains for production
-vercel_domains = [
-    "https://predictive-transaction-intelligence.vercel.app",
-    "https://predictive-transaction-git-4f4c20-ravi-tejas-projects-1a73d02b.vercel.app",
-    "https://predictive-transaction-intelligence-for-bfsi-ihue7zvq4.vercel.app",
-    "https://predictive-transaction-intelligence-for-bfsi-6ic56tcmj.vercel.app",
-]
+# Get Vercel domains from environment variable (secure)
+vercel_domains_env = os.getenv("VERCEL_DOMAINS", "")
+vercel_domains = [domain.strip() for domain in vercel_domains_env.split(",") if domain.strip()]
 
 # Combine all origins
 all_origins = cors_origins + vercel_domains
