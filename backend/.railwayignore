@@ -1,0 +1,29 @@
+# Railway ignore file - exclude large files from deployment
+
+# Data files
+data/
+*.csv
+*.xlsx
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Large output files
+outputs/eda_reports/
+outputs/logs/
+
+# Documentation
+docs/
+Agile Docs/
+
+# Tests and scripts
+tests/
+scripts/
+tools/
+
+# Environment files
+.env*
+myenv/
+venv/
+env/

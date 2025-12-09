@@ -1,0 +1,80 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+myenv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+notebooks/
+*.ipynb
+
+# Data files (these should be in external storage, not in the container)
+data/
+*.csv
+*.xlsx
+*.db
+*.sqlite
+
+# Large model files in outputs (keep only needed models)
+outputs/eda_reports/
+outputs/logs/
+outputs/models/
+Model_Comparison/
+
+# Keep outputs/all_models for the trained models
+!outputs/all_models/
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.vim
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.example
+
+# Documentation (not needed at runtime)
+docs/
+*.md
+!README.md
+
+# Test files
+tests/
+tools/
+
+# Scripts not needed for production
+scripts/
+
+# Form HTML (not needed for API)
+Form.html
+
+# Development requirements
+requirements.txt
