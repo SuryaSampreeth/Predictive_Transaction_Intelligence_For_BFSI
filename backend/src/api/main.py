@@ -78,8 +78,18 @@ def load_pickle_with_rename(path):
         return RenameUnpickler(f).load()
 
 # Model loading with error handling
-MODEL_PATH = "outputs/all_models/random_forest_model.pkl"
-PREPROCESSOR_PATH = "src/preprocessing/preprocessor.pkl"
+import os
+
+# Get base directory - works both locally and in Docker container
+# In Docker: PYTHONPATH=/app, so we use that as base
+# Locally: Calculate from file path
+if os.getenv("PYTHONPATH") == "/app":
+    BASE_DIR = "/app"
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+MODEL_PATH = os.path.join(BASE_DIR, "outputs", "all_models", "random_forest_model.pkl")
+PREPROCESSOR_PATH = os.path.join(BASE_DIR, "src", "preprocessing", "preprocessor.pkl")
 
 model = None
 preprocessor = None
@@ -88,7 +98,17 @@ MODEL_FEATURE_ORDER = []
 N_FEATURES = 0
 FEATURE_ARRAY_TEMPLATE = None
 
-print("🔄 Loading model & preprocessor...")
+print(f"🔄 Loading model & preprocessor...")
+print(f"   BASE_DIR: {BASE_DIR}")
+print(f"   Model path: {MODEL_PATH} (exists: {os.path.exists(MODEL_PATH)})")
+print(f"   Preprocessor path: {PREPROCESSOR_PATH} (exists: {os.path.exists(PREPROCESSOR_PATH)})")
+
+# List available model files for debugging
+model_dir = os.path.join(BASE_DIR, "outputs", "all_models")
+if os.path.exists(model_dir):
+    print(f"   Available models: {os.listdir(model_dir)}")
+else:
+    print(f"   ⚠️ Model directory does not exist: {model_dir}")
 
 try:
     model = joblib.load(MODEL_PATH)
