@@ -36,14 +36,16 @@ cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
 vercel_domains_env = os.getenv("VERCEL_DOMAINS", "")
 vercel_domains = [domain.strip() for domain in vercel_domains_env.split(",") if domain.strip()]
 
-# Combine all origins
-all_origins = cors_origins + vercel_domains
+# Combine all origins - add wildcard for debugging
+all_origins = ["*"] + cors_origins + vercel_domains
+
+print(f"✅ CORS Origins configured: {all_origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=all_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_credentials=False,  # Must be False when using "*"
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
