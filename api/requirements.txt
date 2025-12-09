@@ -1,0 +1,2 @@
+# Vercel Serverless Functions - Minimal dependencies
+# Keep this lightweight for fast cold starts

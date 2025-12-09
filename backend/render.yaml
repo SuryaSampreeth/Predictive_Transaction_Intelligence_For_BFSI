@@ -1,9 +1,29 @@
-# Render.com Build Configuration for FastAPI Backend
-# https://render.com/docs/deploy-fastapi
+# Render.com Blueprint for FastAPI Backend
+# https://render.com/docs/blueprint-spec
 
-# Build command
-build:
-  - pip install -r requirements.txt
-
-# Start command
-start: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+services:
+  - type: web
+    name: transintelliflow-api
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements-render.txt
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+      - key: MONGODB_URL
+        sync: false
+      - key: DATABASE_NAME
+        value: fraud_detection_db
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MODEL_VERSION
+        value: "1.0.0"
+      - key: USE_MOCK_DATA
+        value: "true"
+      - key: CORS_ORIGINS
+        value: "https://your-frontend.vercel.app,http://localhost:5173"
+    healthCheckPath: /health

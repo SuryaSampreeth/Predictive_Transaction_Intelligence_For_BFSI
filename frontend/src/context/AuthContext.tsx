@@ -34,17 +34,43 @@ const rolePermissions: Record<UserRole, string[]> = {
 
 const STORAGE_KEY = "transintelliflow:user";
 
+// Safe localStorage helper to prevent errors in restricted contexts
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      console.warn('localStorage access denied');
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      console.warn('localStorage access denied');
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      console.warn('localStorage access denied');
+    }
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = safeLocalStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         setUser(JSON.parse(stored));
       } catch (error) {
         console.warn("Failed to parse stored user", error);
-        localStorage.removeItem(STORAGE_KEY);
+        safeLocalStorage.removeItem(STORAGE_KEY);
       }
     }
   }, []);
@@ -59,13 +85,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       lastLogin: new Date().toISOString(),
     };
     setUser(profile);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
     return profile;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+    safeLocalStorage.removeItem(STORAGE_KEY);
   };
 
   const value = useMemo<AuthContextValue>(() => ({

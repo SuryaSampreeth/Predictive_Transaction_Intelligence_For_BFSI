@@ -3,26 +3,74 @@
  * Connects frontend to FastAPI backend
  */
 
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// For Vercel deployment: use relative URL (empty string) when no API URL is configured
+// This allows the frontend to call /api/* which routes to serverless functions
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+// Timeout and retry settings
+const TIMEOUT_MS = 30000;
+const MAX_RETRIES = 2;
+
+// Track if backend is known to be waking up
+let isBackendWakingUp = false;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: TIMEOUT_MS,
 });
 
-// Response interceptor for error handling
+// Request interceptor to add retry logic
+api.interceptors.request.use((config) => {
+  // Add retry count to config
+  (config as any).__retryCount = (config as any).__retryCount || 0;
+  return config;
+});
+
+// Response interceptor with retry for timeout errors
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) => {
+    // Backend is awake
+    isBackendWakingUp = false;
+    return response;
+  },
+  async (error: AxiosError) => {
+    const config = error.config as any;
+
+    // If it's a timeout and we haven't exhausted retries
+    if (
+      error.code === 'ECONNABORTED' &&
+      config &&
+      config.__retryCount < MAX_RETRIES
+    ) {
+      config.__retryCount += 1;
+      isBackendWakingUp = true;
+      console.warn(`API timeout, retrying (attempt ${config.__retryCount}/${MAX_RETRIES})...`);
+
+      // Add a small delay before retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      return api(config);
+    }
+
+    // Check if backend is sleeping (Render free tier)
+    if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+      console.warn('Backend may be sleeping (Render free tier). Please wait 30-60 seconds for cold start.');
+      isBackendWakingUp = true;
+    }
+
     console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
+
+// Export backend status
+export const isBackendSleeping = () => isBackendWakingUp;
+
 
 // ==================== Types ====================
 
@@ -170,14 +218,14 @@ export const fetchTransactions = async (
 ): Promise<TransactionListResponse> => {
   try {
     const params: any = { skip, limit };
-    
+
     if (is_fraud !== undefined) {
       params.is_fraud = is_fraud;
     }
     if (channel) {
       params.channel = channel;
     }
-    
+
     const response = await api.get('/api/transactions', { params });
     return response.data;
   } catch (error) {
@@ -373,7 +421,7 @@ export const predictFraud = async (transaction: PredictionRequest): Promise<Pred
     ...transaction,
     customer_id: transaction.customer_id || `TXN_${Date.now()}`,
   };
-  
+
   const response = await api.post('/api/predict/enhanced', requestData);
   return response.data;
 };
@@ -748,10 +796,10 @@ export const explainPrediction = async (transactionData: any) => {
 /**
  * Fetch all alerts with optional filters
  */
-export const fetchAlerts = async (params?: { 
-  status?: string; 
-  severity?: string; 
-  limit?: number 
+export const fetchAlerts = async (params?: {
+  status?: string;
+  severity?: string;
+  limit?: number
 }) => {
   try {
     const response = await api.get('/api/alerts', { params });
@@ -804,9 +852,9 @@ export const acknowledgeAlert = async (alertId: string) => {
 /**
  * Resolve an alert
  */
-export const resolveAlert = async (alertId: string, data: { 
-  resolved_by: string; 
-  resolution_notes?: string 
+export const resolveAlert = async (alertId: string, data: {
+  resolved_by: string;
+  resolution_notes?: string
 }) => {
   try {
     const response = await api.put(`/api/alerts/${alertId}/resolve`, data);
@@ -820,9 +868,9 @@ export const resolveAlert = async (alertId: string, data: {
 /**
  * Mark alert as false positive
  */
-export const markAlertFalsePositive = async (alertId: string, data: { 
-  marked_by: string; 
-  notes?: string 
+export const markAlertFalsePositive = async (alertId: string, data: {
+  marked_by: string;
+  notes?: string
 }) => {
   try {
     const response = await api.put(`/api/alerts/${alertId}/false-positive`, data);
@@ -899,9 +947,9 @@ export const fetchAlertStream = async (limit: number = 20) => {
   try {
     // Use the new alerts API
     const data = await fetchAlerts({ limit });
-    return { 
-      alerts: data.alerts || [], 
-      total: data.total || 0 
+    return {
+      alerts: data.alerts || [],
+      total: data.total || 0
     };
   } catch (error) {
     console.warn('Alert stream not available, using fallback');
@@ -915,7 +963,7 @@ export const fetchSystemHealth = async () => {
     return response.data;
   } catch (error) {
     console.warn('System health not available, using fallback');
-    return { 
+    return {
       status: 'healthy',
       services: {
         api: { status: 'up', latency_ms: 50 },

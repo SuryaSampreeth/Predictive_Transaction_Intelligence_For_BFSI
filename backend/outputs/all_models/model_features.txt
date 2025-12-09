@@ -1,0 +1,13 @@
+account_age_days
+transaction_amount
+hour
+weekday
+month
+is_high_value
+transaction_amount_log
+channel_Atm
+channel_Mobile
+channel_Pos
+channel_Web
+kyc_verified_No
+kyc_verified_Yes

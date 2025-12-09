@@ -24,6 +24,7 @@ import {
   History,
   BarChart3,
   Menu,
+  Home,
 } from "lucide-react";
 
 interface AppShellProps {
@@ -41,7 +42,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Home", path: "/", icon: Home },
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { label: "Analytics & Reports", path: "/analytics", icon: LineChart },
   { label: "Results History", path: "/results-history", icon: History },
   { label: "Performance Dashboard", path: "/performance", icon: BarChart3 },
