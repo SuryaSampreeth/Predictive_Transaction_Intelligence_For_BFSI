@@ -7,17 +7,25 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgomp1 \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy and install Python dependencies
+# Copy and install Python dependencies first (for caching)
 COPY requirements-prod.txt .
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
 # Copy application code
 COPY src/ ./src/
 COPY configs/ ./configs/
-COPY outputs/all_models/ ./outputs/all_models/
+
+# Copy model files explicitly
+COPY outputs/all_models/*.pkl ./outputs/all_models/
+COPY outputs/all_models/*.json ./outputs/all_models/
+COPY outputs/all_models/*.txt ./outputs/all_models/
+
+# Verify model files are copied
+RUN echo "=== Model files in container ===" && ls -la outputs/all_models/ && echo "=== Preprocessor ===" && ls -la src/preprocessing/*.pkl
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -27,9 +35,9 @@ ENV PORT=8000
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health')" || exit 1
+# Health check using curl (more reliable)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Start command
-CMD uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+# Start command with logging
+CMD ["sh", "-c", "echo 'Starting API server...' && uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT} --log-level info"]

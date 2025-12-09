@@ -4,8 +4,6 @@
 # Git and version control
 .git/
 .gitignore
-*.md
-!README.md
 
 # Python cache and artifacts
 __pycache__/
@@ -40,20 +38,19 @@ notebooks/
 *.ipynb
 .ipynb_checkpoints/
 
-# Large output files (keep only models)
+# Output directories we don't need
 outputs/eda_reports/
 outputs/logs/
 outputs/models/
-!outputs/all_models/
 
 # Documentation and tests
 docs/
 tests/
 tools/
 scripts/
+*.md
 
 # Other project files
-Agile\ Docs/
 Model_Comparison/
 final_fraud_model/
 
@@ -61,6 +58,9 @@ final_fraud_model/
 requirements.txt
 requirements-render.txt
 
-# Railway config files (not needed in container)
+# Other unused files
 railway-start.sh
 render.yaml
+app.py
+run.py
+Form.html
