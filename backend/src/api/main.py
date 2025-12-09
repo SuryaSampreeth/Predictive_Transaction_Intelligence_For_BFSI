@@ -28,6 +28,20 @@ from ..detection import get_fraud_engine, initialize_fraud_engine
 
 app = FastAPI(title="Fraud Detection API - TransIntelliFlow", version="1.0")
 
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "Fraud Detection API - TransIntelliFlow",
+        "version": "1.0",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "full_health": "/health/full",
+            "docs": "/docs"
+        }
+    }
+
 # CORS Configuration - Read from environment variable
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:8080,http://localhost:8081,http://localhost:5173,http://localhost:3000")
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
@@ -63,29 +77,47 @@ def load_pickle_with_rename(path):
     with open(path, "rb") as f:
         return RenameUnpickler(f).load()
 
-# Updated model paths to match app.py
+# Model loading with error handling
 MODEL_PATH = "outputs/all_models/random_forest_model.pkl"
 PREPROCESSOR_PATH = "src/preprocessing/preprocessor.pkl"
 
+model = None
+preprocessor = None
+fraud_engine = None
+MODEL_FEATURE_ORDER = []
+N_FEATURES = 0
+FEATURE_ARRAY_TEMPLATE = None
+
 print("🔄 Loading model & preprocessor...")
 
-model = joblib.load(MODEL_PATH)
-preprocessor = load_pickle_with_rename(PREPROCESSOR_PATH)
+try:
+    model = joblib.load(MODEL_PATH)
+    print("✅ Model Loaded:", type(model))
+    
+    preprocessor = load_pickle_with_rename(PREPROCESSOR_PATH)
+    print("✅ Preprocessor Loaded:", type(preprocessor))
+    
+    if hasattr(model, 'feature_names_in_'):
+        print("Model expects:", model.feature_names_in_)
+        MODEL_FEATURE_ORDER = list(model.feature_names_in_)
+        N_FEATURES = len(MODEL_FEATURE_ORDER)
+        
+        # Pre-create numpy array template for faster predictions
+        import numpy as np
+        FEATURE_ARRAY_TEMPLATE = np.zeros((1, N_FEATURES), dtype=np.float64)
+    
+    # Initialize Fraud Detection Engine (Milestone 3)
+    fraud_engine = initialize_fraud_engine(model=model, preprocessor=preprocessor)
+    print("✅ Fraud Detection Engine Initialized")
+    
+except Exception as e:
+    print(f"⚠️ Warning: Failed to load model/preprocessor: {e}")
+    print("⚠️ API will start in limited mode - some endpoints may not work")
+    model = None
+    preprocessor = None
+    fraud_engine = None
 
-print("✅ Model Loaded:", type(model))
-print("✅ Preprocessor Loaded:", type(preprocessor))
-print("Model expects:", model.feature_names_in_)
-
-# Initialize Fraud Detection Engine (Milestone 3)
-fraud_engine = initialize_fraud_engine(model=model, preprocessor=preprocessor)
-print("✅ Fraud Detection Engine Initialized")
-
-MODEL_FEATURE_ORDER = list(model.feature_names_in_)
-N_FEATURES = len(MODEL_FEATURE_ORDER)
-
-# Pre-create numpy array template for faster predictions (avoid DataFrame overhead)
-import numpy as np
-FEATURE_ARRAY_TEMPLATE = np.zeros((1, N_FEATURES), dtype=np.float64)
+# These variables are now initialized in the model loading section above
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -955,23 +987,49 @@ async def get_metrics_history():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Basic health check endpoint - no external dependencies"""
+    return {
+        "status": "healthy",
+        "service": "fraud-detection-api",
+        "version": "1.0",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.get("/health/full")
+async def full_health_check():
+    """Comprehensive health check with database and model status"""
+    health_status = {
+        "status": "healthy",
+        "service": "fraud-detection-api",
+        "timestamp": datetime.utcnow().isoformat(),
+        "components": {
+            "api": "healthy",
+            "database": "unknown",
+            "model": "unknown"
+        }
+    }
+    
+    # Check database
     try:
         db = await get_database()
         await db.command('ping')
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "model": "loaded",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        health_status["components"]["database"] = "healthy"
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "database": "disconnected",
-            "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        health_status["components"]["database"] = "unhealthy"
+        health_status["status"] = "degraded"
+    
+    # Check model
+    try:
+        if 'model' in globals() and model is not None:
+            health_status["components"]["model"] = "loaded"
+        else:
+            health_status["components"]["model"] = "not_loaded"
+            health_status["status"] = "degraded"
+    except Exception:
+        health_status["components"]["model"] = "error"
+        health_status["status"] = "degraded"
+    
+    return health_status
 
 @app.get("/api/metrics")
 async def get_model_metrics():
